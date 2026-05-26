@@ -6,20 +6,36 @@ import { Employee } from "@/lib/types";
 const SECTIONS = [
   "ADMIN", "SALES SUPERVISOR", "PRODUCTION HEAD", "HYGIENE DEPT", "PRODUCTION",
   "PROD - LUXURY ICE", "CLEANER", "VEHICLE MAINTENANCE", "ACCOMMODATION", "HOUSE DRIVER",
-  "DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH",
-  "SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH",
-  "NIGHT SHIFT - AL QUOZ", "AL QUOZ TECHNICIAN", "UMQ PRODUCTION", "NIGHT SHIFT - UMQ",
-  "UMQ TECHNICIAN", "FUJAIRAH FACTORY"
+  "JELAT", "DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH",
+  "DRIVERS", "SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH",
+  "SALESMAN", "NIGHT SHIFT - AL QUOZ", "AL QUOZ TECHNICIAN", "UMQ PRODUCTION", "UMQ - TECHNICIAN",
+  "NIGHT SHIFT - UMQ", "FUJAIRAH FACTORY", "PROD NIGHT - LUXURY ICE",
 ];
 
-const GROUPS = ["OFFICE/ADMIN", "DRIVERS", "SALESMAN", "FACTORY/PRODUCTION"];
+const ALL_GROUPS = ["ADMIN", "OFFICE/ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT"];
+
+function sectionToGroup(section: string): string {
+  if (["ADMIN", "SALES SUPERVISOR", "JELAT"].includes(section)) return "ADMIN";
+  if (["PRODUCTION HEAD", "HYGIENE DEPT"].includes(section)) return "OFFICE/ADMIN";
+  if (["CLEANER", "ACCOMMODATION"].includes(section)) return "CLEANER";
+  if (section.startsWith("DRIVER") || section === "DRIVERS" || section === "HOUSE DRIVER") return "DRIVERS";
+  if (["VEHICLE MAINTENANCE"].includes(section)) return "MECHANIC";
+  if (section.startsWith("SALESMAN")) return "SALESMAN";
+  if (["UMQ PRODUCTION", "UMQ - TECHNICIAN", "UMQ TECHNICIAN"].includes(section)) return "UMQ FACTORY";
+  if (["NIGHT SHIFT - UMQ", "FUJAIRAH FACTORY"].includes(section)) return "FACTORY/PRODUCTION";
+  if (["PRODUCTION", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN"].includes(section)) return "DUBAI FACTORY";
+  if (["NIGHT SHIFT - AL QUOZ", "PROD NIGHT - LUXURY ICE"].includes(section)) return "DUBAI FACTORY NIGHT";
+  return "ADMIN";
+}
 
 export default function EmployeeManagement() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({ name: "", section: SECTIONS[0], grp: GROUPS[0], location: "" });
+  const [newEmployee, setNewEmployee] = useState({ name: "", section: SECTIONS[0], grp: ALL_GROUPS[0], location: "" });
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editData, setEditData] = useState({ section: "", grp: "", location: "" });
 
   useEffect(() => {
     fetchEmployees();
@@ -47,7 +63,7 @@ export default function EmployeeManagement() {
       const data = await res.json();
       if (data.employee) {
         setEmployees([...employees, data.employee]);
-        setNewEmployee({ name: "", section: SECTIONS[0], grp: GROUPS[0], location: "" });
+        setNewEmployee({ name: "", section: SECTIONS[0], grp: ALL_GROUPS[0], location: "" });
         setShowAddForm(false);
       }
     } catch (error) {
@@ -63,6 +79,43 @@ export default function EmployeeManagement() {
     } catch (error) {
       console.error("Failed to delete employee:", error);
     }
+  };
+
+  const startEdit = (emp: Employee) => {
+    setEditingId(emp.id);
+    setEditData({ section: emp.section, grp: emp.grp, location: emp.location || "" });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({ section: "", grp: "", location: "" });
+  };
+
+  const saveEdit = async (id: number) => {
+    try {
+      const res = await fetch("/api/employees", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...editData }),
+      });
+      const data = await res.json();
+      if (data.employee) {
+        setEmployees(employees.map((e) => (e.id === id ? { ...e, ...data.employee } : e)));
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error("Failed to update employee:", error);
+    }
+  };
+
+  const handleNewSectionChange = (section: string) => {
+    const grp = sectionToGroup(section);
+    setNewEmployee({ ...newEmployee, section, grp });
+  };
+
+  const handleEditSectionChange = (section: string) => {
+    const grp = sectionToGroup(section);
+    setEditData({ ...editData, section, grp });
   };
 
   const filtered = employees.filter(
@@ -87,7 +140,7 @@ export default function EmployeeManagement() {
       </div>
 
       {showAddForm && (
-        <form onSubmit={addEmployee} className="bg-white rounded-lg shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+        <form onSubmit={addEmployee} className="bg-white rounded-lg shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-6 gap-3">
           <input
             type="text"
             placeholder="Employee Name"
@@ -98,7 +151,7 @@ export default function EmployeeManagement() {
           />
           <select
             value={newEmployee.section}
-            onChange={(e) => setNewEmployee({ ...newEmployee, section: e.target.value })}
+            onChange={(e) => handleNewSectionChange(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm"
           >
             {SECTIONS.map((s) => (
@@ -110,7 +163,7 @@ export default function EmployeeManagement() {
             onChange={(e) => setNewEmployee({ ...newEmployee, grp: e.target.value })}
             className="border rounded-lg px-3 py-2 text-sm"
           >
-            {GROUPS.map((g) => (
+            {ALL_GROUPS.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}
           </select>
@@ -130,7 +183,7 @@ export default function EmployeeManagement() {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search employees..."
+          placeholder="Search by name, section, or group..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-md border rounded-lg px-4 py-2 text-sm"
@@ -154,19 +207,80 @@ export default function EmployeeManagement() {
               <tr key={emp.id} className="border-b hover:bg-gray-50">
                 <td className="px-4 py-2 text-gray-500">{idx + 1}</td>
                 <td className="px-4 py-2 font-medium">{emp.name}</td>
-                <td className="px-4 py-2 text-gray-600">{emp.section}</td>
-                <td className="px-4 py-2">
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">{emp.grp}</span>
-                </td>
-                <td className="px-4 py-2 text-gray-600">{emp.location || "—"}</td>
-                <td className="px-4 py-2">
-                  <button
-                    onClick={() => deleteEmployee(emp.id)}
-                    className="text-red-500 hover:text-red-700 text-xs font-medium"
-                  >
-                    Remove
-                  </button>
-                </td>
+                {editingId === emp.id ? (
+                  <>
+                    <td className="px-4 py-2">
+                      <select
+                        value={editData.section}
+                        onChange={(e) => handleEditSectionChange(e.target.value)}
+                        className="border rounded px-2 py-1 text-xs w-full"
+                      >
+                        {SECTIONS.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2">
+                      <select
+                        value={editData.grp}
+                        onChange={(e) => setEditData({ ...editData, grp: e.target.value })}
+                        className="border rounded px-2 py-1 text-xs w-full"
+                      >
+                        {ALL_GROUPS.map((g) => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={editData.location}
+                        onChange={(e) => setEditData({ ...editData, location: e.target.value.toUpperCase() })}
+                        className="border rounded px-2 py-1 text-xs w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => saveEdit(emp.id)}
+                          className="text-green-600 hover:text-green-800 text-xs font-medium"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-2 text-gray-600">{emp.section}</td>
+                    <td className="px-4 py-2">
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">{emp.grp}</span>
+                    </td>
+                    <td className="px-4 py-2 text-gray-600">{emp.location || "—"}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(emp)}
+                          className="text-blue-500 hover:text-blue-700 text-xs font-medium"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => deleteEmployee(emp.id)}
+                          className="text-red-500 hover:text-red-700 text-xs font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

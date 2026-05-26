@@ -19,7 +19,6 @@ export default function Home() {
   const [checkingSetup, setCheckingSetup] = useState(true);
 
   useEffect(() => {
-    // Check if database is set up by trying to fetch employees
     const checkSetup = async () => {
       try {
         const res = await fetch("/api/employees");
@@ -34,7 +33,6 @@ export default function Home() {
     };
     checkSetup();
 
-    // Restore session from localStorage
     const savedUser = localStorage.getItem("attendance_user");
     if (savedUser) {
       try {

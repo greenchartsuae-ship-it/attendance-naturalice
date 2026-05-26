@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Employee } from "@/lib/types";
 
-const GROUP_FILTERS = ["ALL", "OFFICE/ADMIN", "DRIVERS", "SALESMAN", "FACTORY/PRODUCTION"];
+const GROUP_FILTERS = ["ALL", "OFFICE/ADMIN", "ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT"];
 
 const SECTION_COLORS: Record<string, string> = {
   "ADMIN": "#4472C4",
@@ -16,61 +16,42 @@ const SECTION_COLORS: Record<string, string> = {
   "VEHICLE MAINTENANCE": "#4472C4",
   "ACCOMMODATION": "#4472C4",
   "HOUSE DRIVER": "#4472C4",
+  "JELAT": "#2F5496",
   "DRIVER - DUBAI": "#4472C4",
   "DRIVER - ABU DHABI": "#4472C4",
   "DRIVER - OTHER EMIRATES": "#4472C4",
   "DRIVER - FUJAIRAH": "#C55A11",
+  "DRIVERS": "#4472C4",
   "SALESMAN - DUBAI": "#4472C4",
   "SALESMAN - ABU DHABI": "#548235",
   "SALESMAN - OTHER EMIRATES": "#4472C4",
   "SALESMAN - FUJAIRAH": "#C55A11",
+  "SALESMAN": "#4472C4",
   "NIGHT SHIFT - AL QUOZ": "#2F5496",
   "AL QUOZ TECHNICIAN": "#548235",
   "UMQ PRODUCTION": "#7030A0",
+  "UMQ - TECHNICIAN": "#548235",
   "NIGHT SHIFT - UMQ": "#C55A11",
   "UMQ TECHNICIAN": "#548235",
   "FUJAIRAH FACTORY": "#C55A11",
+  "PROD NIGHT - LUXURY ICE": "#BF8F00",
 };
 
-// Column groups for PDF
-const COLUMN_GROUPS = [
-  {
-    title: "ADMIN",
-    sections: ["ADMIN", "SALES SUPERVISOR", "PRODUCTION HEAD", "HYGIENE DEPT", "PRODUCTION", "PROD - LUXURY ICE", "CLEANER", "VEHICLE MAINTENANCE", "ACCOMMODATION", "HOUSE DRIVER"],
-    grp: "OFFICE/ADMIN",
-  },
-  {
-    title: "DRIVERS",
-    sections: ["DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH"],
-    grp: "DRIVERS",
-  },
-  {
-    title: "SALESMAN",
-    sections: ["SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH"],
-    grp: "SALESMAN",
-  },
-  {
-    title: "DUBAI FACTORY / UMQ",
-    sections: ["NIGHT SHIFT - AL QUOZ", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN", "UMQ PRODUCTION", "NIGHT SHIFT - UMQ", "UMQ TECHNICIAN", "FUJAIRAH FACTORY"],
-    grp: "FACTORY/PRODUCTION",
-  },
-];
+// Map groups to PDF column titles
+const PDF_COLUMN_MAP: Record<string, string> = {
+  "ADMIN": "ADMIN",
+  "OFFICE/ADMIN": "ADMIN",
+  "CLEANER": "ADMIN",
+  "DRIVERS": "DRIVERS",
+  "SALESMAN": "SALESMAN",
+  "UMQ FACTORY": "UMQ FACTORY",
+  "FACTORY/PRODUCTION": "UMQ FACTORY",
+  "MECHANIC": "UMQ FACTORY",
+  "DUBAI FACTORY": "DUBAI FACTORY",
+  "DUBAI FACTORY NIGHT": "DUBAI FACTORY",
+};
 
-// Section display order within OFFICE/ADMIN group
-const ADMIN_SECTION_ORDER = ["ADMIN", "SALES SUPERVISOR", "PRODUCTION HEAD", "HYGIENE DEPT", "PRODUCTION", "PROD - LUXURY ICE", "CLEANER", "VEHICLE MAINTENANCE", "ACCOMMODATION", "HOUSE DRIVER"];
-const DRIVERS_SECTION_ORDER = ["DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH"];
-const SALESMAN_SECTION_ORDER = ["SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH"];
-const FACTORY_SECTION_ORDER = ["NIGHT SHIFT - AL QUOZ", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN", "UMQ PRODUCTION", "NIGHT SHIFT - UMQ", "UMQ TECHNICIAN", "FUJAIRAH FACTORY"];
-
-function getSectionOrder(grp: string): string[] {
-  switch (grp) {
-    case "OFFICE/ADMIN": return ADMIN_SECTION_ORDER;
-    case "DRIVERS": return DRIVERS_SECTION_ORDER;
-    case "SALESMAN": return SALESMAN_SECTION_ORDER;
-    case "FACTORY/PRODUCTION": return FACTORY_SECTION_ORDER;
-    default: return [];
-  }
-}
+const PDF_COLUMN_ORDER = ["ADMIN", "DRIVERS", "SALESMAN", "UMQ FACTORY", "DUBAI FACTORY"];
 
 function toggleStatus(current: string, clicked: string): string {
   if (clicked === "O" || clicked === "L" || clicked === "V") {
@@ -98,7 +79,6 @@ function toggleStatus(current: string, clicked: string): string {
       return remaining.join(",");
     } else {
       const newStatuses = [...statuses, "OT"];
-      // Sort: P first, then OT
       return newStatuses.sort((a, b) => (a === "P" ? -1 : b === "P" ? 1 : 0)).join(",");
     }
   }
@@ -124,6 +104,7 @@ export default function DailyAttendance() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -154,7 +135,6 @@ export default function DailyAttendance() {
     if (groupFilter !== "ALL") {
       filtered = filtered.filter((e) => e.grp === groupFilter);
     }
-    // Sort by section order within group
     return filtered;
   };
 
@@ -169,15 +149,31 @@ export default function DailyAttendance() {
     setAttendance(updated);
   };
 
+  const resetDay = async () => {
+    try {
+      const res = await fetch(`/api/attendance?date=${date}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setAttendance({});
+        setOriginalAttendance({});
+        setSaveMessage("Day reset successfully!");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } else {
+        setSaveMessage("Reset failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Reset failed:", error);
+      setSaveMessage("Reset failed. Please try again.");
+    }
+    setConfirmReset(false);
+  };
+
   const saveAttendance = async () => {
     setSaving(true);
     setSaveMessage("");
     try {
-      // Build records for changed items
       const records: { employee_id: number; date: string; status: string }[] = [];
-      const allEmpIds = new Set(employees.map((e) => e.id));
-      
-      // Include all employees that have a status or had a status
+
       for (const emp of employees) {
         const current = attendance[emp.id] || "";
         const original = originalAttendance[emp.id] || "";
@@ -192,7 +188,6 @@ export default function DailyAttendance() {
         return;
       }
 
-      // Batch in groups of 20
       for (let i = 0; i < records.length; i += 20) {
         const batch = records.slice(i, i + 20);
         await fetch("/api/attendance", {
@@ -220,17 +215,39 @@ export default function DailyAttendance() {
 
     const dateDisplay = formatDateForDisplay(date);
 
-    // Build column data
+    // Dynamically build PDF columns from employee data
+    const columnEmployees: Record<string, Employee[]> = {};
+    for (const colTitle of PDF_COLUMN_ORDER) {
+      columnEmployees[colTitle] = [];
+    }
+
+    for (const emp of employees) {
+      const colTitle = PDF_COLUMN_MAP[emp.grp] || "ADMIN";
+      if (!columnEmployees[colTitle]) columnEmployees[colTitle] = [];
+      columnEmployees[colTitle].push(emp);
+    }
+
+    // Group employees by section within each column
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const columnTables: any[] = [];
 
-    for (const colGroup of COLUMN_GROUPS) {
+    for (const colTitle of PDF_COLUMN_ORDER) {
+      const colEmps = columnEmployees[colTitle] || [];
+      if (colEmps.length === 0) continue;
+
+      // Group by section
+      const sectionMap: Record<string, Employee[]> = {};
+      for (const emp of colEmps) {
+        if (!sectionMap[emp.section]) sectionMap[emp.section] = [];
+        sectionMap[emp.section].push(emp);
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tableBody: any[] = [];
 
       // Group header
       tableBody.push([
-        { text: colGroup.title, colSpan: 4, alignment: "center", bold: true, fillColor: "#2E5090", color: "white", fontSize: 7, margin: [0, 1, 0, 1] },
+        { text: colTitle, colSpan: 4, alignment: "center", bold: true, fillColor: "#2E5090", color: "white", fontSize: 7, margin: [0, 1, 0, 1] },
         {}, {}, {}
       ]);
 
@@ -245,10 +262,8 @@ export default function DailyAttendance() {
       let sl = 1;
       let sectionPresent = 0, sectionOff = 0, sectionOT = 0, sectionLeave = 0, sectionVacation = 0;
 
-      for (const section of colGroup.sections) {
-        const sectionEmps = employees.filter((e) => e.grp === colGroup.grp && e.section === section);
-        if (sectionEmps.length === 0) continue;
-
+      for (const section of Object.keys(sectionMap)) {
+        const sectionEmps = sectionMap[section];
         const sColor = SECTION_COLORS[section] || "#4472C4";
 
         // Section header
@@ -281,7 +296,6 @@ export default function DailyAttendance() {
             stCell,
           ]);
 
-          // Count
           if (status.includes("P")) sectionPresent++;
           if (status.includes("OT")) sectionOT++;
           if (status === "O") sectionOff++;
@@ -378,20 +392,6 @@ export default function DailyAttendance() {
     groupedEmployees[groupedEmployees.length - 1].employees.push(emp);
   }
 
-  // Sort sections by defined order
-  const sortedGroups = groupedEmployees.sort((a, b) => {
-    // Find which group each section belongs to
-    for (const grp of ["OFFICE/ADMIN", "DRIVERS", "SALESMAN", "FACTORY/PRODUCTION"]) {
-      const order = getSectionOrder(grp);
-      const aIdx = order.indexOf(a.section);
-      const bIdx = order.indexOf(b.section);
-      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-      if (aIdx !== -1) return -1;
-      if (bIdx !== -1) return 1;
-    }
-    return 0;
-  });
-
   let globalSl = 0;
 
   return (
@@ -441,6 +441,29 @@ export default function DailyAttendance() {
           >
             📄 Export PDF
           </button>
+          {!confirmReset ? (
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition"
+            >
+              🗑 Reset Day
+            </button>
+          ) : (
+            <div className="flex gap-1">
+              <button
+                onClick={resetDay}
+                className="bg-red-700 hover:bg-red-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+              >
+                Confirm Reset
+              </button>
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -465,7 +488,7 @@ export default function DailyAttendance() {
               </tr>
             </thead>
             <tbody>
-              {sortedGroups.map((group) => {
+              {groupedEmployees.map((group) => {
                 const sColor = SECTION_COLORS[group.section] || "#4472C4";
                 return [
                   <tr key={`section-${group.section}`}>

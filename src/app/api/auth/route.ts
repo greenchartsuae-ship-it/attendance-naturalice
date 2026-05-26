@@ -1,8 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { getSQL } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
+    const sql = getSQL();
     const { username, password } = await request.json();
     
     const result = await sql`
@@ -10,16 +11,16 @@ export async function POST(request: Request) {
       WHERE username = ${username} AND password = ${password}
     `;
     
-    if (result.rows.length > 0) {
+    if (result.length > 0) {
       return NextResponse.json({ 
         success: true, 
-        user: { username: result.rows[0].username, role: result.rows[0].role } 
+        user: { username: result[0].username, role: result[0].role } 
       });
     }
     
     return NextResponse.json({ success: false, error: 'Invalid credentials' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

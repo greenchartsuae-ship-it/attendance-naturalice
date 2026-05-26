@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Employee } from "@/lib/types";
 
-const GROUP_FILTERS = ["ALL", "OFFICE/ADMIN", "DRIVERS", "SALESMAN", "FACTORY/PRODUCTION"];
+const GROUP_FILTERS = ["ALL", "OFFICE/ADMIN", "ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT"];
 
 const SECTION_COLORS: Record<string, string> = {
   "ADMIN": "#4472C4",
@@ -16,30 +16,41 @@ const SECTION_COLORS: Record<string, string> = {
   "VEHICLE MAINTENANCE": "#4472C4",
   "ACCOMMODATION": "#4472C4",
   "HOUSE DRIVER": "#4472C4",
+  "JELAT": "#2F5496",
   "DRIVER - DUBAI": "#4472C4",
   "DRIVER - ABU DHABI": "#4472C4",
   "DRIVER - OTHER EMIRATES": "#4472C4",
   "DRIVER - FUJAIRAH": "#C55A11",
+  "DRIVERS": "#4472C4",
   "SALESMAN - DUBAI": "#4472C4",
   "SALESMAN - ABU DHABI": "#548235",
   "SALESMAN - OTHER EMIRATES": "#4472C4",
   "SALESMAN - FUJAIRAH": "#C55A11",
+  "SALESMAN": "#4472C4",
   "NIGHT SHIFT - AL QUOZ": "#2F5496",
   "AL QUOZ TECHNICIAN": "#548235",
   "UMQ PRODUCTION": "#7030A0",
+  "UMQ - TECHNICIAN": "#548235",
   "NIGHT SHIFT - UMQ": "#C55A11",
   "UMQ TECHNICIAN": "#548235",
   "FUJAIRAH FACTORY": "#C55A11",
+  "PROD NIGHT - LUXURY ICE": "#BF8F00",
 };
 
 const SECTION_ORDER: Record<string, string[]> = {
-  "OFFICE/ADMIN": ["ADMIN", "SALES SUPERVISOR", "PRODUCTION HEAD", "HYGIENE DEPT", "PRODUCTION", "PROD - LUXURY ICE", "CLEANER", "VEHICLE MAINTENANCE", "ACCOMMODATION", "HOUSE DRIVER"],
-  "DRIVERS": ["DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH"],
-  "SALESMAN": ["SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH"],
-  "FACTORY/PRODUCTION": ["NIGHT SHIFT - AL QUOZ", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN", "UMQ PRODUCTION", "NIGHT SHIFT - UMQ", "UMQ TECHNICIAN", "FUJAIRAH FACTORY"],
+  "ADMIN": ["ADMIN", "SALES SUPERVISOR", "JELAT"],
+  "OFFICE/ADMIN": ["PRODUCTION HEAD", "HYGIENE DEPT"],
+  "CLEANER": ["CLEANER", "ACCOMMODATION"],
+  "DRIVERS": ["DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH", "DRIVERS", "HOUSE DRIVER"],
+  "MECHANIC": ["VEHICLE MAINTENANCE"],
+  "SALESMAN": ["SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH", "SALESMAN"],
+  "UMQ FACTORY": ["UMQ PRODUCTION", "UMQ - TECHNICIAN", "UMQ TECHNICIAN"],
+  "FACTORY/PRODUCTION": ["NIGHT SHIFT - UMQ", "FUJAIRAH FACTORY"],
+  "DUBAI FACTORY": ["PRODUCTION", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN"],
+  "DUBAI FACTORY NIGHT": ["NIGHT SHIFT - AL QUOZ", "PROD NIGHT - LUXURY ICE"],
 };
 
-const GRP_ORDER = ["OFFICE/ADMIN", "DRIVERS", "SALESMAN", "FACTORY/PRODUCTION"];
+const GRP_ORDER = ["ADMIN", "OFFICE/ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT"];
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
@@ -109,15 +120,18 @@ export default function MonthlySummary() {
     if (groupFilter !== "ALL") {
       filtered = filtered.filter((e) => e.grp === groupFilter);
     }
-    // Sort by group order, then section order, then name
     return [...filtered].sort((a, b) => {
       const grpA = GRP_ORDER.indexOf(a.grp);
       const grpB = GRP_ORDER.indexOf(b.grp);
-      if (grpA !== grpB) return grpA - grpB;
+      const grpAIdx = grpA === -1 ? GRP_ORDER.length : grpA;
+      const grpBIdx = grpB === -1 ? GRP_ORDER.length : grpB;
+      if (grpAIdx !== grpBIdx) return grpAIdx - grpBIdx;
       const secOrder = SECTION_ORDER[a.grp] || [];
       const secA = secOrder.indexOf(a.section);
       const secB = secOrder.indexOf(b.section);
-      if (secA !== secB) return secA - secB;
+      const secAIdx = secA === -1 ? secOrder.length : secA;
+      const secBIdx = secB === -1 ? secOrder.length : secB;
+      if (secAIdx !== secBIdx) return secAIdx - secBIdx;
       return a.name.localeCompare(b.name);
     });
   };
@@ -150,7 +164,7 @@ export default function MonthlySummary() {
       if (status === "L") l++;
       if (status === "V") v++;
     }
-    return { p, ot, o, l, v, total: p + o + l + v };
+    return { p, ot, o, l, v, total: p + ot + o };
   };
 
   // Monthly totals
@@ -254,7 +268,6 @@ export default function MonthlySummary() {
     const totalsRow: any[] = [
       { text: "MONTHLY TOTALS", colSpan: 3, bold: true, fontSize: 5, fillColor: "#D9E2F3" }, {}, {},
     ];
-    // Daily totals per day
     for (let d = 1; d <= daysInMonth; d++) {
       let dayCount = 0;
       sortedEmployees.forEach((emp) => {
@@ -269,7 +282,7 @@ export default function MonthlySummary() {
     totalsRow.push({ text: monthlyTotals.o.toString(), fontSize: 5, alignment: "center", bold: true, color: "#FF0000", fillColor: "#D9E2F3" });
     totalsRow.push({ text: monthlyTotals.l.toString(), fontSize: 5, alignment: "center", bold: true, color: "#0070C0", fillColor: "#D9E2F3" });
     totalsRow.push({ text: monthlyTotals.v.toString(), fontSize: 5, alignment: "center", bold: true, color: "#7030A0", fillColor: "#D9E2F3" });
-    totalsRow.push({ text: (monthlyTotals.p + monthlyTotals.o + monthlyTotals.l + monthlyTotals.v).toString(), fontSize: 5, alignment: "center", bold: true, fillColor: "#D9E2F3" });
+    totalsRow.push({ text: (monthlyTotals.p + monthlyTotals.ot + monthlyTotals.o).toString(), fontSize: 5, alignment: "center", bold: true, fillColor: "#D9E2F3" });
     tableBody.push(totalsRow);
 
     // Column widths
@@ -277,7 +290,7 @@ export default function MonthlySummary() {
     for (let d = 0; d < daysInMonth; d++) {
       colWidths.push(14);
     }
-    colWidths.push(14, 14, 14, 14, 14, 16); // P, OT, O, L, V, TOTAL
+    colWidths.push(14, 14, 14, 14, 14, 16);
 
     const docDefinition = {
       pageSize: "A4" as const,
@@ -459,7 +472,7 @@ export default function MonthlySummary() {
                 <td className="px-1 py-1.5 text-center text-red-600">{monthlyTotals.o}</td>
                 <td className="px-1 py-1.5 text-center text-blue-600">{monthlyTotals.l}</td>
                 <td className="px-1 py-1.5 text-center text-purple-600">{monthlyTotals.v}</td>
-                <td className="px-1 py-1.5 text-center">{monthlyTotals.p + monthlyTotals.o + monthlyTotals.l + monthlyTotals.v}</td>
+                <td className="px-1 py-1.5 text-center">{monthlyTotals.p + monthlyTotals.ot + monthlyTotals.o}</td>
               </tr>
             </tbody>
           </table>

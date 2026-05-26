@@ -1,37 +1,34 @@
-import { sql } from '@vercel/postgres';
+import { getSQL } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
+    const sql = getSQL();
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
     const month = searchParams.get('month');
 
-    // Get all active employees
-    const empResult = await sql`
+    const employees = await sql`
       SELECT id, name, section, grp, location 
       FROM employees 
       WHERE active = true 
       ORDER BY grp, section, name
     `;
-    const employees = empResult.rows;
 
     if (date) {
-      // Daily attendance
       const attResult = await sql`
         SELECT employee_id, status 
         FROM attendance 
         WHERE date = ${date}
       `;
       const attendance: Record<number, string> = {};
-      for (const row of attResult.rows) {
-        attendance[row.employee_id] = row.status;
+      for (const row of attResult) {
+        attendance[row.employee_id as number] = row.status as string;
       }
       return NextResponse.json({ employees, attendance });
     }
 
     if (month) {
-      // Monthly attendance - get all records for the month
       const startDate = `${month}-01`;
       const endDate = `${month}-31`;
       const attResult = await sql`
@@ -40,13 +37,12 @@ export async function GET(request: Request) {
         WHERE date >= ${startDate}::date AND date <= ${endDate}::date
       `;
       const attendance: Record<number, Record<string, string>> = {};
-      for (const row of attResult.rows) {
-        const empId = row.employee_id;
+      for (const row of attResult) {
+        const empId = row.employee_id as number;
         if (!attendance[empId]) attendance[empId] = {};
-        // Format date as YYYY-MM-DD
-        const d = new Date(row.date);
+        const d = new Date(row.date as string);
         const dateStr = d.toISOString().split('T')[0];
-        attendance[empId][dateStr] = row.status;
+        attendance[empId][dateStr] = row.status as string;
       }
       return NextResponse.json({ employees, attendance });
     }
@@ -60,6 +56,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const sql = getSQL();
     const { records } = await request.json();
     
     if (!records || !Array.isArray(records)) {
@@ -76,7 +73,6 @@ export async function POST(request: Request) {
           DO UPDATE SET status = EXCLUDED.status
         `;
       } else {
-        // Empty status = delete the record
         await sql`
           DELETE FROM attendance 
           WHERE employee_id = ${record.employee_id} AND date = ${record.date}
@@ -86,6 +82,22 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, saved });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const sql = getSQL();
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
+    if (!date) {
+      return NextResponse.json({ error: 'Missing date parameter' }, { status: 400 });
+    }
+    await sql`DELETE FROM attendance WHERE date = ${date}::date`;
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
