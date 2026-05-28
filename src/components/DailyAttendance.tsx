@@ -252,6 +252,7 @@ export default function DailyAttendance() {
 
       // Totals tracking
       let totalP = 0, totalOT = 0, totalO = 0, totalL = 0, totalV = 0;
+      let maxFinalY = 0;
 
       const colWidth = (pageWidth - 20) / 5; // 5 columns with margins
       const startY = 15;
@@ -342,11 +343,15 @@ export default function DailyAttendance() {
             3: { cellWidth: 10 },
           },
         });
+
+        // Track the bottom of each column table
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const colFinalY = (doc as any).lastAutoTable?.finalY || 0;
+        if (colFinalY > maxFinalY) maxFinalY = colFinalY;
       }
 
-      // Total section at bottom
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const finalY = Math.max(...PDF_COLUMN_ORDER.map((_, i) => (doc as any).lastAutoTable?.finalY || 0)) + 5;
+      // Total section at bottom - positioned below the tallest column
+      const finalY = maxFinalY + 5;
       const grandTotal = totalP + totalO + totalL + totalV;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
