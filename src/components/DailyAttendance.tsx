@@ -53,16 +53,21 @@ const PDF_COLUMN_MAP: Record<string, string> = {
 
 const PDF_COLUMN_ORDER = ["ADMIN", "DRIVERS", "SALESMAN", "UMQ FACTORY", "DUBAI FACTORY"];
 
+const COLUMN_HEADER_COLORS: Record<string, string> = {
+  "ADMIN": "#2E5090",
+  "DRIVERS": "#4472C4",
+  "SALESMAN": "#548235",
+  "UMQ FACTORY": "#7030A0",
+  "DUBAI FACTORY": "#C55A11",
+};
+
 function toggleStatus(current: string, clicked: string): string {
   if (clicked === "O" || clicked === "L" || clicked === "V") {
     return current === clicked ? "" : clicked;
   }
-  // P and OT can be combined
   const statuses = current ? current.split(",") : [];
   if (clicked === "P") {
-    if (statuses.includes("O") || statuses.includes("L") || statuses.includes("V")) {
-      return "P";
-    }
+    if (statuses.includes("O") || statuses.includes("L") || statuses.includes("V")) return "P";
     if (statuses.includes("P")) {
       const remaining = statuses.filter((s) => s !== "P");
       return remaining.join(",");
@@ -71,9 +76,7 @@ function toggleStatus(current: string, clicked: string): string {
     }
   }
   if (clicked === "OT") {
-    if (statuses.includes("O") || statuses.includes("L") || statuses.includes("V")) {
-      return "OT";
-    }
+    if (statuses.includes("O") || statuses.includes("L") || statuses.includes("V")) return "OT";
     if (statuses.includes("OT")) {
       const remaining = statuses.filter((s) => s !== "OT");
       return remaining.join(",");
@@ -90,6 +93,11 @@ function formatDateForDisplay(dateStr: string): string {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
 }
 
 export default function DailyAttendance() {
@@ -173,7 +181,6 @@ export default function DailyAttendance() {
     setSaveMessage("");
     try {
       const records: { employee_id: number; date: string; status: string }[] = [];
-
       for (const emp of employees) {
         const current = attendance[emp.id] || "";
         const original = originalAttendance[emp.id] || "";
@@ -181,13 +188,11 @@ export default function DailyAttendance() {
           records.push({ employee_id: emp.id, date, status: current });
         }
       }
-
       if (records.length === 0) {
         setSaveMessage("No changes to save.");
         setSaving(false);
         return;
       }
-
       for (let i = 0; i < records.length; i += 20) {
         const batch = records.slice(i, i + 20);
         await fetch("/api/attendance", {
@@ -196,7 +201,6 @@ export default function DailyAttendance() {
           body: JSON.stringify({ records: batch }),
         });
       }
-
       setOriginalAttendance({ ...attendance });
       setSaveMessage(`Saved ${records.length} records successfully!`);
     } catch (error) {
@@ -208,208 +212,169 @@ export default function DailyAttendance() {
   };
 
   const exportPDF = async () => {
-    const pdfMake = (await import("pdfmake/build/pdfmake")).default;
-    const pdfFonts = (await import("pdfmake/build/vfs_fonts")).default;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pdfMake.vfs = (pdfFonts as any).pdfMake ? (pdfFonts as any).pdfMake.vfs : (pdfFonts as any).vfs;
+    try {
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default;
+      await import("jspdf-autotable");
 
-    const dateDisplay = formatDateForDisplay(date);
+      const dateDisplay = formatDateForDisplay(date);
 
-    // Column header colors
-    const COLUMN_HEADER_COLORS: Record<string, string> = {
-      "ADMIN": "#2E5090",
-      "DRIVERS": "#4472C4",
-      "SALESMAN": "#548235",
-      "UMQ FACTORY": "#7030A0",
-      "DUBAI FACTORY": "#C55A11",
-    };
-
-    // Dynamically build PDF columns from employee data
-    const columnEmployees: Record<string, Employee[]> = {};
-    for (const colTitle of PDF_COLUMN_ORDER) {
-      columnEmployees[colTitle] = [];
-    }
-
-    for (const emp of employees) {
-      const colTitle = PDF_COLUMN_MAP[emp.grp] || "ADMIN";
-      if (!columnEmployees[colTitle]) columnEmployees[colTitle] = [];
-      columnEmployees[colTitle].push(emp);
-    }
-
-    // Track global totals
-    let totalPresent = 0, totalOff = 0, totalOT = 0, totalLeave = 0, totalVacation = 0;
-
-    // Group employees by section within each column
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const columnTables: any[] = [];
-
-    for (const colTitle of PDF_COLUMN_ORDER) {
-      const colEmps = columnEmployees[colTitle] || [];
-
-      // Group by section
-      const sectionMap: Record<string, Employee[]> = {};
-      for (const emp of colEmps) {
-        if (!sectionMap[emp.section]) sectionMap[emp.section] = [];
-        sectionMap[emp.section].push(emp);
+      // Build columns
+      const columnEmployees: Record<string, Employee[]> = {};
+      for (const colTitle of PDF_COLUMN_ORDER) columnEmployees[colTitle] = [];
+      for (const emp of employees) {
+        const colTitle = PDF_COLUMN_MAP[emp.grp] || "ADMIN";
+        if (!columnEmployees[colTitle]) columnEmployees[colTitle] = [];
+        columnEmployees[colTitle].push(emp);
       }
+
+      // Find the tallest column to determine page height
+      let maxRows = 0;
+      for (const colTitle of PDF_COLUMN_ORDER) {
+        const emps = columnEmployees[colTitle];
+        // Count section headers
+        const secs = new Set(emps.map(e => e.section));
+        const rows = emps.length + secs.size + 2; // +2 for col header + sub header
+        if (rows > maxRows) maxRows = rows;
+      }
+
+      const rowH = 4.2;
+      const neededHeight = 25 + (maxRows * rowH) + 30; // title + rows + totals
+      const pageHeight = Math.max(210, neededHeight);
+      const pageWidth = 297; // A4 landscape width
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [pageWidth, pageHeight] });
+
+      // Title
+      doc.setFontSize(11);
+      doc.setTextColor(46, 80, 144);
+      doc.setFont("helvetica", "bold");
+      doc.text(dateDisplay, pageWidth / 2, 10, { align: "center" });
+
+      // Totals tracking
+      let totalP = 0, totalOT = 0, totalO = 0, totalL = 0, totalV = 0;
+
+      const colWidth = (pageWidth - 20) / 5; // 5 columns with margins
+      const startY = 15;
+
+      for (let colIdx = 0; colIdx < PDF_COLUMN_ORDER.length; colIdx++) {
+        const colTitle = PDF_COLUMN_ORDER[colIdx];
+        const colEmps = columnEmployees[colTitle] || [];
+        const colColor = hexToRgb(COLUMN_HEADER_COLORS[colTitle] || "#2E5090");
+        const x = 5 + colIdx * colWidth;
+
+        // Group by section
+        const sectionMap: Record<string, Employee[]> = {};
+        for (const emp of colEmps) {
+          if (!sectionMap[emp.section]) sectionMap[emp.section] = [];
+          sectionMap[emp.section].push(emp);
+        }
+
+        // Build table body
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const body: any[][] = [];
+
+        let sl = 1;
+        for (const section of Object.keys(sectionMap)) {
+          const sectionEmps = sectionMap[section];
+          const sColor = hexToRgb(SECTION_COLORS[section] || "#4472C4");
+
+          // Section header
+          body.push([{
+            content: section, colSpan: 4, styles: { fillColor: sColor, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5 }
+          }, "", "", ""]);
+
+          for (const emp of sectionEmps) {
+            const status = attendance[emp.id] || "";
+            let statusColor: [number, number, number] = [0, 0, 0];
+            if (status === "P") statusColor = [0, 176, 80];
+            else if (status === "OT") statusColor = [255, 192, 0];
+            else if (status === "P,OT") statusColor = [0, 176, 80];
+            else if (status === "O") statusColor = [255, 0, 0];
+            else if (status === "L") statusColor = [0, 112, 192];
+            else if (status === "V") statusColor = [112, 48, 160];
+
+            body.push([
+              { content: sl.toString(), styles: { halign: "center", fontSize: 4 } },
+              { content: emp.name, styles: { fontSize: 4 } },
+              { content: emp.location || "", styles: { fontSize: 4 } },
+              { content: status, styles: { halign: "center", textColor: statusColor, fontStyle: "bold", fontSize: 4.5 } },
+            ]);
+
+            if (status.includes("P")) totalP++;
+            if (status.includes("OT")) totalOT++;
+            if (status === "O") totalO++;
+            if (status === "L") totalL++;
+            if (status === "V") totalV++;
+            sl++;
+          }
+        }
+
+        if (colEmps.length === 0) {
+          body.push([{ content: "No employees", colSpan: 4, styles: { fontSize: 4, textColor: [150, 150, 150], halign: "center", fontStyle: "italic" } }, "", "", ""]);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (doc as any).autoTable({
+          head: [
+            [{ content: colTitle, colSpan: 4, styles: { fillColor: colColor, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.5, halign: "center" } }, "", "", ""],
+            [
+              { content: "SL", styles: { fillColor: [217, 226, 243], fontStyle: "bold", halign: "center", fontSize: 4.5 } },
+              { content: "NAME", styles: { fillColor: [217, 226, 243], fontStyle: "bold", fontSize: 4.5 } },
+              { content: "LOC", styles: { fillColor: [217, 226, 243], fontStyle: "bold", fontSize: 4.5 } },
+              { content: "ST", styles: { fillColor: [217, 226, 243], fontStyle: "bold", halign: "center", fontSize: 4.5 } },
+            ],
+          ],
+          body: body,
+          startY: startY,
+          margin: { left: x, right: pageWidth - x - colWidth + 2 },
+          tableWidth: colWidth - 3,
+          styles: {
+            fontSize: 4,
+            cellPadding: 0.8,
+            lineWidth: 0.1,
+            lineColor: [200, 200, 200],
+          },
+          columnStyles: {
+            0: { cellWidth: 7 },
+            1: { cellWidth: colWidth - 35 },
+            2: { cellWidth: 18 },
+            3: { cellWidth: 10 },
+          },
+        });
+      }
+
+      // Total section at bottom
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const finalY = Math.max(...PDF_COLUMN_ORDER.map((_, i) => (doc as any).lastAutoTable?.finalY || 0)) + 5;
+      const grandTotal = totalP + totalO + totalL + totalV;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tableBody: any[] = [];
-
-      const colColor = COLUMN_HEADER_COLORS[colTitle] || "#2E5090";
-
-      // Group header with column-specific color
-      tableBody.push([
-        { text: colTitle, colSpan: 4, alignment: "center", bold: true, fillColor: colColor, color: "white", fontSize: 7, margin: [0, 1, 0, 1] },
-        {}, {}, {}
-      ]);
-
-      // Column headers
-      tableBody.push([
-        { text: "SL", bold: true, fontSize: 6, alignment: "center", fillColor: "#D9E2F3" },
-        { text: "NAME", bold: true, fontSize: 6, fillColor: "#D9E2F3" },
-        { text: "LOC", bold: true, fontSize: 6, fillColor: "#D9E2F3" },
-        { text: "ST", bold: true, fontSize: 6, alignment: "center", fillColor: "#D9E2F3" },
-      ]);
-
-      let sl = 1;
-
-      if (colEmps.length === 0) {
-        tableBody.push([
-          { text: "No employees", colSpan: 4, fontSize: 6, italics: true, color: "#999999", alignment: "center" },
-          {}, {}, {}
-        ]);
-      }
-
-      for (const section of Object.keys(sectionMap)) {
-        const sectionEmps = sectionMap[section];
-        const sColor = SECTION_COLORS[section] || "#4472C4";
-
-        // Section header
-        tableBody.push([
-          { text: section, colSpan: 4, bold: true, fontSize: 6, fillColor: sColor, color: "white", margin: [0, 1, 0, 1] },
-          {}, {}, {}
-        ]);
-
-        for (const emp of sectionEmps) {
-          const status = attendance[emp.id] || "";
-          let statusText = status;
-          let statusColor = "#000000";
-          let statusBg: string | undefined = undefined;
-
-          if (status === "P") { statusColor = "#00B050"; }
-          else if (status === "OT") { statusColor = "#FFC000"; }
-          else if (status === "P,OT") { statusColor = "#FFC000"; statusBg = "#E2EFDA"; statusText = "P,OT"; }
-          else if (status === "O") { statusColor = "#FF0000"; }
-          else if (status === "L") { statusColor = "#0070C0"; }
-          else if (status === "V") { statusColor = "#7030A0"; }
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const stCell: any = { text: statusText, fontSize: 6, alignment: "center", color: statusColor, bold: true };
-          if (statusBg) stCell.fillColor = statusBg;
-
-          tableBody.push([
-            { text: sl.toString(), fontSize: 5.5, alignment: "center" },
-            { text: emp.name, fontSize: 5.5 },
-            { text: emp.location || "", fontSize: 5.5 },
-            stCell,
-          ]);
-
-          if (status.includes("P")) totalPresent++;
-          if (status.includes("OT")) totalOT++;
-          if (status === "O") totalOff++;
-          if (status === "L") totalLeave++;
-          if (status === "V") totalVacation++;
-
-          sl++;
-        }
-      }
-
-      columnTables.push({
-        table: {
-          headerRows: 2,
-          widths: [14, "*", 42, 22],
-          body: tableBody,
-        },
-        layout: {
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => "#CCCCCC",
-          vLineColor: () => "#CCCCCC",
-          paddingLeft: () => 2,
-          paddingRight: () => 2,
-          paddingTop: () => 1,
-          paddingBottom: () => 1,
-        },
+      (doc as any).autoTable({
+        head: [[{ content: "TOTAL", colSpan: 12, styles: { fillColor: [46, 80, 144], textColor: [255, 255, 255], halign: "center", fontSize: 7 } }, "", "", "", "", "", "", "", "", "", "", ""]],
+        body: [[
+          { content: "PRESENT:", styles: { fontStyle: "bold", halign: "right", fontSize: 6 } },
+          { content: totalP.toString(), styles: { fontStyle: "bold", halign: "center", textColor: [0, 176, 80], fillColor: [226, 239, 218], fontSize: 6 } },
+          { content: "OFF:", styles: { fontStyle: "bold", halign: "right", fontSize: 6 } },
+          { content: totalO.toString(), styles: { fontStyle: "bold", halign: "center", textColor: [197, 90, 17], fillColor: [252, 228, 204], fontSize: 6 } },
+          { content: "OVERTIME:", styles: { fontStyle: "bold", halign: "right", fontSize: 6 } },
+          { content: totalOT.toString(), styles: { fontStyle: "bold", halign: "center", textColor: [191, 143, 0], fillColor: [255, 242, 204], fontSize: 6 } },
+          { content: "LEAVE:", styles: { fontStyle: "bold", halign: "right", fontSize: 6 } },
+          { content: totalL.toString(), styles: { fontStyle: "bold", halign: "center", textColor: [255, 0, 0], fillColor: [255, 217, 217], fontSize: 6 } },
+          { content: "VACATION:", styles: { fontStyle: "bold", halign: "right", fontSize: 6 } },
+          { content: totalV.toString(), styles: { fontStyle: "bold", halign: "center", textColor: [0, 112, 192], fillColor: [214, 228, 240], fontSize: 6 } },
+          { content: "GRAND TOTAL:", styles: { fontStyle: "bold", halign: "right", fontSize: 6 } },
+          { content: grandTotal.toString(), styles: { fontStyle: "bold", halign: "center", textColor: [46, 80, 144], fillColor: [217, 226, 243], fontSize: 6 } },
+        ]],
+        startY: finalY,
+        margin: { left: 20, right: 20 },
+        styles: { cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
       });
+
+      doc.save(`attendance-${date}.pdf`);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      alert("PDF export failed: " + (error instanceof Error ? error.message : String(error)));
     }
-
-    // Single combined total table at the bottom
-    const grandTotal = totalPresent + totalOff + totalLeave + totalVacation;
-    const totalTable = {
-      table: {
-        widths: ["*", 40, "*", 40, "*", 40, "*"],
-        body: [
-          [
-            { text: "PRESENT:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
-            { text: totalPresent.toString(), fontSize: 8, bold: true, alignment: "center", color: "#00B050", fillColor: "#E2EFDA", margin: [0, 2, 0, 2] },
-            { text: "OFF:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
-            { text: totalOff.toString(), fontSize: 8, bold: true, alignment: "center", color: "#C55A11", fillColor: "#FCE4CC", margin: [0, 2, 0, 2] },
-            { text: "OVERTIME:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
-            { text: totalOT.toString(), fontSize: 8, bold: true, alignment: "center", color: "#BF8F00", fillColor: "#FFF2CC", margin: [0, 2, 0, 2] },
-            { text: "", border: [false, false, false, false] },
-          ],
-          [
-            { text: "LEAVE:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
-            { text: totalLeave.toString(), fontSize: 8, bold: true, alignment: "center", color: "#FF0000", fillColor: "#FFD9D9", margin: [0, 2, 0, 2] },
-            { text: "VACATION:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
-            { text: totalVacation.toString(), fontSize: 8, bold: true, alignment: "center", color: "#0070C0", fillColor: "#D6E4F0", margin: [0, 2, 0, 2] },
-            { text: "GRAND TOTAL:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
-            { text: grandTotal.toString(), fontSize: 8, bold: true, alignment: "center", color: "#2E5090", fillColor: "#D9E2F3", margin: [0, 2, 0, 2] },
-            { text: "", border: [false, false, false, false] },
-          ],
-        ],
-      },
-      layout: {
-        hLineWidth: () => 0.5,
-        vLineWidth: () => 0.5,
-        hLineColor: () => "#CCCCCC",
-        vLineColor: () => "#CCCCCC",
-      },
-    };
-
-    const docDefinition = {
-      pageSize: "A4" as const,
-      pageOrientation: "landscape" as const,
-      pageMargins: [15, 35, 15, 15] as [number, number, number, number],
-      header: {
-        text: dateDisplay,
-        alignment: "center" as const,
-        fontSize: 12,
-        bold: true,
-        margin: [0, 10, 0, 0] as [number, number, number, number],
-        color: "#2E5090",
-      },
-      content: [
-        {
-          columns: columnTables.map((t) => ({ width: "*", ...t })),
-          columnGap: 5,
-        },
-        { text: "", margin: [0, 6, 0, 0] as [number, number, number, number] },
-        {
-          text: "TOTAL",
-          fontSize: 9,
-          bold: true,
-          alignment: "center" as const,
-          fillColor: "#2E5090",
-          color: "#2E5090",
-          margin: [0, 0, 0, 4] as [number, number, number, number],
-        },
-        totalTable,
-      ],
-    };
-
-    pdfMake.createPdf(docDefinition).download(`attendance-${date}.pdf`);
   };
 
   const filteredEmployees = getFilteredEmployees();
@@ -521,10 +486,10 @@ export default function DailyAttendance() {
               </tr>
             </thead>
             <tbody>
-              {groupedEmployees.map((group) => {
+              {groupedEmployees.map((group, gIdx) => {
                 const sColor = SECTION_COLORS[group.section] || "#4472C4";
                 return [
-                  <tr key={`section-${group.section}`}>
+                  <tr key={`section-${gIdx}-${group.section}`}>
                     <td colSpan={5} className="px-3 py-1.5 font-bold text-white text-xs" style={{ backgroundColor: sColor }}>
                       {group.section} ({group.employees.length})
                     </td>

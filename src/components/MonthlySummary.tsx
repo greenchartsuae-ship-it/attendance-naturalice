@@ -65,6 +65,16 @@ function isFriday(year: number, month: number, day: number): boolean {
   return new Date(year, month - 1, day).getDay() === 5;
 }
 
+function getStatusBg(status: string): string {
+  if (status === "P") return "bg-green-100";
+  if (status === "OT") return "bg-orange-100";
+  if (status === "P,OT") return "bg-gradient-to-r from-green-100 to-orange-100";
+  if (status === "O") return "bg-red-100";
+  if (status === "L") return "bg-blue-100";
+  if (status === "V") return "bg-purple-100";
+  return "";
+}
+
 function getStatusColor(status: string): string {
   if (status === "P") return "#16a34a";
   if (status === "OT") return "#ea580c";
@@ -75,14 +85,9 @@ function getStatusColor(status: string): string {
   return "";
 }
 
-function getStatusBg(status: string): string {
-  if (status === "P") return "bg-green-100";
-  if (status === "OT") return "bg-orange-100";
-  if (status === "P,OT") return "bg-gradient-to-r from-green-100 to-orange-100";
-  if (status === "O") return "bg-red-100";
-  if (status === "L") return "bg-blue-100";
-  if (status === "V") return "bg-purple-100";
-  return "";
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
 }
 
 export default function MonthlySummary() {
@@ -179,153 +184,178 @@ export default function MonthlySummary() {
   });
 
   const exportPDF = async () => {
-    const pdfMake = (await import("pdfmake/build/pdfmake")).default;
-    const pdfFonts = (await import("pdfmake/build/vfs_fonts")).default;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pdfMake.vfs = (pdfFonts as any).pdfMake ? (pdfFonts as any).pdfMake.vfs : (pdfFonts as any).vfs;
+    try {
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default;
+      await import("jspdf-autotable");
 
-    const title = `STAFF ATTENDANCE — ${monthNames[month - 1].toUpperCase()} ${year} | MONTHLY SUMMARY`;
+      // Calculate page dimensions to fit all content
+      const totalRows = sortedEmployees.length + sections.length + 2; // employees + section headers + header + totals
+      const rowHeight = 4.5;
+      const headerHeight = 12;
+      const marginTop = 15;
+      const marginBottom = 10;
+      const neededHeight = marginTop + headerHeight + (totalRows * rowHeight) + marginBottom + 10;
+      const pageHeight = Math.max(210, neededHeight); // at least A4 portrait width
 
-    // Build table
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tableBody: any[][] = [];
+      // Landscape: width=long side, height=short side but we use custom
+      const pageWidth = 420; // A3-ish landscape width to fit 31 day columns
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [pageWidth, pageHeight] });
 
-    // Header row
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const headerRow: any[] = [
-      { text: "SECTION", bold: true, fontSize: 5, fillColor: "#2E5090", color: "white" },
-      { text: "EMPLOYEE", bold: true, fontSize: 5, fillColor: "#2E5090", color: "white" },
-      { text: "LOC", bold: true, fontSize: 5, fillColor: "#2E5090", color: "white" },
-    ];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const abbrev = getDayAbbrev(year, month, d);
-      const friday = isFriday(year, month, d);
-      headerRow.push({
-        text: `${d}\n${abbrev}`,
-        bold: true,
-        fontSize: 4,
-        alignment: "center",
-        fillColor: friday ? "#FFF3E0" : "#2E5090",
-        color: friday ? "#E65100" : "white",
-      });
-    }
-    headerRow.push({ text: "P", bold: true, fontSize: 5, alignment: "center", fillColor: "#00B050", color: "white" });
-    headerRow.push({ text: "OT", bold: true, fontSize: 5, alignment: "center", fillColor: "#FFC000", color: "white" });
-    headerRow.push({ text: "O", bold: true, fontSize: 5, alignment: "center", fillColor: "#FF0000", color: "white" });
-    headerRow.push({ text: "L", bold: true, fontSize: 5, alignment: "center", fillColor: "#0070C0", color: "white" });
-    headerRow.push({ text: "V", bold: true, fontSize: 5, alignment: "center", fillColor: "#7030A0", color: "white" });
-    headerRow.push({ text: "TOT", bold: true, fontSize: 5, alignment: "center", fillColor: "#2E5090", color: "white" });
-    tableBody.push(headerRow);
+      const title = `STAFF ATTENDANCE — ${monthNames[month - 1].toUpperCase()} ${year} | MONTHLY SUMMARY`;
+      doc.setFontSize(10);
+      doc.setTextColor(46, 80, 144);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, pageWidth / 2, 10, { align: "center" });
 
-    // Data rows
-    for (const sec of sections) {
-      const sColor = SECTION_COLORS[sec.section] || "#4472C4";
-      // Section separator row
-      const sepRow = Array(3 + daysInMonth + 6).fill({});
-      sepRow[0] = { text: sec.section, colSpan: 3 + daysInMonth + 6, bold: true, fontSize: 5, fillColor: sColor, color: "white", margin: [0, 1, 0, 1] };
-      tableBody.push(sepRow);
+      // Build table data
+      const head: { content: string; styles: Record<string, unknown> }[][] = [];
+      const body: (string | { content: string; styles: Record<string, unknown> })[][] = [];
 
-      for (const emp of sec.employees) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const row: any[] = [
-          { text: sec.section, fontSize: 4, color: "#666666" },
-          { text: emp.name, fontSize: 4.5 },
-          { text: emp.location || "", fontSize: 4 },
-        ];
-        for (let d = 1; d <= daysInMonth; d++) {
-          const status = getEmpStatus(emp.id, d);
-          const friday = isFriday(year, month, d);
-          let color = "#000000";
-          if (status === "P") color = "#00B050";
-          else if (status === "OT") color = "#FFC000";
-          else if (status === "P,OT") color = "#00B050";
-          else if (status === "O") color = "#FF0000";
-          else if (status === "L") color = "#0070C0";
-          else if (status === "V") color = "#7030A0";
+      // Header row
+      const headerRow: { content: string; styles: Record<string, unknown> }[] = [
+        { content: "SECTION", styles: { fillColor: [46, 80, 144], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5 } },
+        { content: "EMPLOYEE", styles: { fillColor: [46, 80, 144], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5 } },
+        { content: "LOC", styles: { fillColor: [46, 80, 144], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5 } },
+      ];
 
-          row.push({
-            text: status || "",
-            fontSize: 4,
-            alignment: "center",
-            color,
-            bold: !!status,
-            fillColor: friday ? "#FFF8E1" : undefined,
-          });
-        }
-        const summary = getEmpSummary(emp.id);
-        row.push({ text: summary.p.toString(), fontSize: 4.5, alignment: "center", bold: true, color: "#00B050" });
-        row.push({ text: summary.ot.toString(), fontSize: 4.5, alignment: "center", bold: true, color: "#FFC000" });
-        row.push({ text: summary.o.toString(), fontSize: 4.5, alignment: "center", bold: true, color: "#FF0000" });
-        row.push({ text: summary.l.toString(), fontSize: 4.5, alignment: "center", bold: true, color: "#0070C0" });
-        row.push({ text: summary.v.toString(), fontSize: 4.5, alignment: "center", bold: true, color: "#7030A0" });
-        row.push({ text: summary.total.toString(), fontSize: 4.5, alignment: "center", bold: true });
-        tableBody.push(row);
+      for (let d = 1; d <= daysInMonth; d++) {
+        const abbrev = getDayAbbrev(year, month, d);
+        const friday = isFriday(year, month, d);
+        headerRow.push({
+          content: `${d}\n${abbrev}`,
+          styles: {
+            fillColor: friday ? [255, 243, 224] : [46, 80, 144],
+            textColor: friday ? [230, 81, 0] : [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 3.5,
+            halign: "center",
+          },
+        });
       }
-    }
+      headerRow.push({ content: "P", styles: { fillColor: [0, 176, 80], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5, halign: "center" } });
+      headerRow.push({ content: "OT", styles: { fillColor: [255, 192, 0], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5, halign: "center" } });
+      headerRow.push({ content: "O", styles: { fillColor: [255, 0, 0], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5, halign: "center" } });
+      headerRow.push({ content: "L", styles: { fillColor: [0, 112, 192], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5, halign: "center" } });
+      headerRow.push({ content: "V", styles: { fillColor: [112, 48, 160], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5, halign: "center" } });
+      headerRow.push({ content: "TOTAL", styles: { fillColor: [46, 80, 144], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4.5, halign: "center" } });
+      head.push(headerRow);
 
-    // Monthly totals row
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const totalsRow: any[] = [
-      { text: "MONTHLY TOTALS", colSpan: 3, bold: true, fontSize: 5, fillColor: "#D9E2F3" }, {}, {},
-    ];
-    for (let d = 1; d <= daysInMonth; d++) {
-      let dayCount = 0;
-      sortedEmployees.forEach((emp) => {
-        const status = getEmpStatus(emp.id, d);
-        if (status) dayCount++;
-      });
-      const friday = isFriday(year, month, d);
-      totalsRow.push({ text: dayCount.toString(), fontSize: 4, alignment: "center", bold: true, fillColor: friday ? "#FFF3E0" : "#D9E2F3" });
-    }
-    totalsRow.push({ text: monthlyTotals.p.toString(), fontSize: 5, alignment: "center", bold: true, color: "#00B050", fillColor: "#D9E2F3" });
-    totalsRow.push({ text: monthlyTotals.ot.toString(), fontSize: 5, alignment: "center", bold: true, color: "#FFC000", fillColor: "#D9E2F3" });
-    totalsRow.push({ text: monthlyTotals.o.toString(), fontSize: 5, alignment: "center", bold: true, color: "#FF0000", fillColor: "#D9E2F3" });
-    totalsRow.push({ text: monthlyTotals.l.toString(), fontSize: 5, alignment: "center", bold: true, color: "#0070C0", fillColor: "#D9E2F3" });
-    totalsRow.push({ text: monthlyTotals.v.toString(), fontSize: 5, alignment: "center", bold: true, color: "#7030A0", fillColor: "#D9E2F3" });
-    totalsRow.push({ text: (monthlyTotals.p + monthlyTotals.ot + monthlyTotals.o).toString(), fontSize: 5, alignment: "center", bold: true, fillColor: "#D9E2F3" });
-    tableBody.push(totalsRow);
+      // Data rows
+      for (const sec of sections) {
+        const sColor = hexToRgb(SECTION_COLORS[sec.section] || "#4472C4");
+        const totalCols = 3 + daysInMonth + 6;
 
-    // Column widths
-    const colWidths = [35, 55, 30];
-    for (let d = 0; d < daysInMonth; d++) {
-      colWidths.push(14);
-    }
-    colWidths.push(14, 14, 14, 14, 14, 16);
+        // Section separator row
+        const sepRow: (string | { content: string; styles: Record<string, unknown> })[] = [];
+        sepRow.push({ content: `— ${sec.section} —`, styles: { fillColor: sColor, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4, halign: "left", colSpan: totalCols } });
+        for (let i = 1; i < totalCols; i++) sepRow.push("");
+        body.push(sepRow);
 
-    const docDefinition = {
-      pageSize: "A4" as const,
-      pageOrientation: "landscape" as const,
-      pageMargins: [10, 35, 10, 10] as [number, number, number, number],
-      header: {
-        text: title,
-        alignment: "center" as const,
-        fontSize: 9,
-        bold: true,
-        margin: [0, 10, 0, 0] as [number, number, number, number],
-        color: "#2E5090",
-      },
-      content: [
-        {
-          table: {
-            headerRows: 1,
-            widths: colWidths,
-            body: tableBody,
-          },
-          layout: {
-            hLineWidth: () => 0.3,
-            vLineWidth: () => 0.3,
-            hLineColor: () => "#CCCCCC",
-            vLineColor: () => "#CCCCCC",
-            paddingLeft: () => 1,
-            paddingRight: () => 1,
-            paddingTop: () => 1,
-            paddingBottom: () => 1,
-          },
+        for (const emp of sec.employees) {
+          const row: (string | { content: string; styles: Record<string, unknown> })[] = [
+            { content: sec.section, styles: { fontSize: 3.5, textColor: [100, 100, 100] } },
+            { content: emp.name, styles: { fontSize: 4 } },
+            { content: emp.location || "", styles: { fontSize: 3.5 } },
+          ];
+
+          for (let d = 1; d <= daysInMonth; d++) {
+            const status = getEmpStatus(emp.id, d);
+            const friday = isFriday(year, month, d);
+            let color: [number, number, number] = [0, 0, 0];
+            if (status === "P") color = [0, 176, 80];
+            else if (status === "OT") color = [255, 192, 0];
+            else if (status === "P,OT") color = [0, 176, 80];
+            else if (status === "O") color = [255, 0, 0];
+            else if (status === "L") color = [0, 112, 192];
+            else if (status === "V") color = [112, 48, 160];
+
+            row.push({
+              content: status || "",
+              styles: {
+                fontSize: 3.5,
+                halign: "center",
+                textColor: color,
+                fontStyle: status ? "bold" : "normal",
+                fillColor: friday ? [255, 248, 225] : undefined,
+              } as Record<string, unknown>,
+            });
+          }
+
+          const summary = getEmpSummary(emp.id);
+          row.push({ content: summary.p ? summary.p.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [0, 176, 80] } });
+          row.push({ content: summary.ot ? summary.ot.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 192, 0] } });
+          row.push({ content: summary.o ? summary.o.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 0, 0] } });
+          row.push({ content: summary.l ? summary.l.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [0, 112, 192] } });
+          row.push({ content: summary.v ? summary.v.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [112, 48, 160] } });
+          row.push({ content: summary.total ? summary.total.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold" } });
+          body.push(row);
+        }
+      }
+
+      // Monthly totals row
+      const totalsRow: (string | { content: string; styles: Record<string, unknown> })[] = [
+        { content: "MONTHLY TOTALS", styles: { fontStyle: "bold", fontSize: 4.5, fillColor: [217, 226, 243], colSpan: 3 } },
+        "", "",
+      ];
+      for (let d = 1; d <= daysInMonth; d++) {
+        let dayCount = 0;
+        sortedEmployees.forEach((emp) => { if (getEmpStatus(emp.id, d)) dayCount++; });
+        const friday = isFriday(year, month, d);
+        totalsRow.push({
+          content: dayCount ? dayCount.toString() : "",
+          styles: { fontSize: 3.5, halign: "center", fontStyle: "bold", fillColor: friday ? [255, 243, 224] : [217, 226, 243] },
+        });
+      }
+      totalsRow.push({ content: monthlyTotals.p.toString(), styles: { fontSize: 4.5, halign: "center", fontStyle: "bold", textColor: [0, 176, 80], fillColor: [217, 226, 243] } });
+      totalsRow.push({ content: monthlyTotals.ot.toString(), styles: { fontSize: 4.5, halign: "center", fontStyle: "bold", textColor: [255, 192, 0], fillColor: [217, 226, 243] } });
+      totalsRow.push({ content: monthlyTotals.o.toString(), styles: { fontSize: 4.5, halign: "center", fontStyle: "bold", textColor: [255, 0, 0], fillColor: [217, 226, 243] } });
+      totalsRow.push({ content: monthlyTotals.l.toString(), styles: { fontSize: 4.5, halign: "center", fontStyle: "bold", textColor: [0, 112, 192], fillColor: [217, 226, 243] } });
+      totalsRow.push({ content: monthlyTotals.v.toString(), styles: { fontSize: 4.5, halign: "center", fontStyle: "bold", textColor: [112, 48, 160], fillColor: [217, 226, 243] } });
+      totalsRow.push({ content: (monthlyTotals.p + monthlyTotals.ot + monthlyTotals.o).toString(), styles: { fontSize: 4.5, halign: "center", fontStyle: "bold", fillColor: [217, 226, 243] } });
+      body.push(totalsRow);
+
+      // Column widths
+      const dayColWidth = (pageWidth - 20 - 30 - 45 - 25 - 6 * 10) / daysInMonth;
+      const colWidths = [30, 45, 25];
+      for (let d = 0; d < daysInMonth; d++) colWidths.push(dayColWidth);
+      colWidths.push(10, 10, 10, 10, 10, 12);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (doc as any).autoTable({
+        head: head,
+        body: body,
+        startY: 14,
+        margin: { left: 5, right: 5, top: 14, bottom: 5 },
+        styles: {
+          fontSize: 3.5,
+          cellPadding: 0.8,
+          lineWidth: 0.1,
+          lineColor: [200, 200, 200],
         },
-      ],
-    };
+        headStyles: {
+          fillColor: [46, 80, 144],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+        },
+        columnStyles: colWidths.reduce((acc: Record<number, { cellWidth: number }>, w, i) => {
+          acc[i] = { cellWidth: w };
+          return acc;
+        }, {}),
+        tableWidth: "auto",
+        didParseCell: function(data: { section: string; row: { index: number }; cell: { styles: Record<string, unknown> } }) {
+          // Ensure consistent row height
+          if (data.section === "body") {
+            data.cell.styles.minCellHeight = 4;
+          }
+        },
+      });
 
-    pdfMake.createPdf(docDefinition).download(`attendance-monthly-${monthStr}.pdf`);
+      doc.save(`attendance-monthly-${monthStr}.pdf`);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      alert("PDF export failed: " + (error instanceof Error ? error.message : String(error)));
+    }
   };
 
   return (
@@ -408,10 +438,10 @@ export default function MonthlySummary() {
               </tr>
             </thead>
             <tbody>
-              {sections.map((sec) => {
+              {sections.map((sec, secIdx) => {
                 const sColor = SECTION_COLORS[sec.section] || "#4472C4";
                 return [
-                  <tr key={`sec-${sec.section}`}>
+                  <tr key={`sec-${secIdx}-${sec.section}`}>
                     <td
                       colSpan={3 + daysInMonth + 6}
                       className="px-2 py-1 font-bold text-white text-xs"
