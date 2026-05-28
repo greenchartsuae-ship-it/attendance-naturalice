@@ -67,21 +67,21 @@ function isFriday(year: number, month: number, day: number): boolean {
 
 function getStatusBg(status: string): string {
   if (status === "P") return "bg-green-100";
-  if (status === "OT") return "bg-orange-100";
-  if (status === "P,OT") return "bg-gradient-to-r from-green-100 to-orange-100";
-  if (status === "O") return "bg-red-100";
-  if (status === "L") return "bg-blue-100";
-  if (status === "V") return "bg-purple-100";
+  if (status === "OT") return "bg-yellow-100";
+  if (status === "P,OT") return "bg-gradient-to-r from-green-100 to-yellow-100";
+  if (status === "O") return "bg-orange-100";
+  if (status === "L") return "bg-red-100";
+  if (status === "V") return "bg-blue-100";
   return "";
 }
 
 function getStatusColor(status: string): string {
   if (status === "P") return "#16a34a";
-  if (status === "OT") return "#ea580c";
+  if (status === "OT") return "#ca8a04";
   if (status === "P,OT") return "#16a34a";
-  if (status === "O") return "#dc2626";
-  if (status === "L") return "#2563eb";
-  if (status === "V") return "#7c3aed";
+  if (status === "O") return "#ea580c";
+  if (status === "L") return "#dc2626";
+  if (status === "V") return "#2563eb";
   return "";
 }
 
@@ -248,7 +248,7 @@ export default function MonthlySummary() {
 
         // Section separator row
         const sepRow: (string | { content: string; styles: Record<string, unknown> })[] = [];
-        sepRow.push({ content: `— ${sec.section} —`, styles: { fillColor: sColor, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4, halign: "left", colSpan: totalCols } });
+        sepRow.push({ content: `— ${sec.section} —`, colSpan: totalCols, styles: { fillColor: sColor, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 4, halign: "left" } });
         for (let i = 1; i < totalCols; i++) sepRow.push("");
         body.push(sepRow);
 
@@ -295,7 +295,7 @@ export default function MonthlySummary() {
 
       // Monthly totals row
       const totalsRow: (string | { content: string; styles: Record<string, unknown> })[] = [
-        { content: "MONTHLY TOTALS", styles: { fontStyle: "bold", fontSize: 4.5, fillColor: [217, 226, 243], colSpan: 3 } },
+        { content: "MONTHLY TOTALS", colSpan: 3, styles: { fontStyle: "bold", fontSize: 4.5, fillColor: [217, 226, 243] } },
         "", "",
       ];
       for (let d = 1; d <= daysInMonth; d++) {
@@ -430,10 +430,10 @@ export default function MonthlySummary() {
                   );
                 })}
                 <th className="px-1.5 py-1.5 text-center bg-green-700 min-w-[28px]">P</th>
-                <th className="px-1.5 py-1.5 text-center bg-orange-600 min-w-[28px]">OT</th>
-                <th className="px-1.5 py-1.5 text-center bg-red-600 min-w-[28px]">O</th>
-                <th className="px-1.5 py-1.5 text-center bg-blue-600 min-w-[28px]">L</th>
-                <th className="px-1.5 py-1.5 text-center bg-purple-600 min-w-[28px]">V</th>
+                <th className="px-1.5 py-1.5 text-center bg-yellow-500 min-w-[28px]">OT</th>
+                <th className="px-1.5 py-1.5 text-center bg-orange-600 min-w-[28px]">O</th>
+                <th className="px-1.5 py-1.5 text-center bg-red-600 min-w-[28px]">L</th>
+                <th className="px-1.5 py-1.5 text-center bg-blue-600 min-w-[28px]">V</th>
                 <th className="px-1.5 py-1.5 text-center bg-blue-900 min-w-[32px]">TOT</th>
               </tr>
             </thead>
@@ -472,10 +472,10 @@ export default function MonthlySummary() {
                           );
                         })}
                         <td className="px-1 py-1 text-center font-bold text-green-600">{summary.p || ""}</td>
-                        <td className="px-1 py-1 text-center font-bold text-orange-600">{summary.ot || ""}</td>
-                        <td className="px-1 py-1 text-center font-bold text-red-600">{summary.o || ""}</td>
-                        <td className="px-1 py-1 text-center font-bold text-blue-600">{summary.l || ""}</td>
-                        <td className="px-1 py-1 text-center font-bold text-purple-600">{summary.v || ""}</td>
+                        <td className="px-1 py-1 text-center font-bold text-yellow-600">{summary.ot || ""}</td>
+                        <td className="px-1 py-1 text-center font-bold text-orange-600">{summary.o || ""}</td>
+                        <td className="px-1 py-1 text-center font-bold text-red-600">{summary.l || ""}</td>
+                        <td className="px-1 py-1 text-center font-bold text-blue-600">{summary.v || ""}</td>
                         <td className="px-1 py-1 text-center font-bold">{summary.total || ""}</td>
                       </tr>
                     );

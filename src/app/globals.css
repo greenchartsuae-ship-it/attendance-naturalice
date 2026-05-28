@@ -40,18 +40,23 @@ body {
 .status-btn:hover {
   @apply opacity-80;
 }
+/* P = green */
 .status-btn.active-P {
   @apply bg-green-500 text-white border-green-600;
 }
+/* OT = yellow */
 .status-btn.active-OT {
+  @apply bg-yellow-400 text-white border-yellow-500;
+}
+/* O = orange */
+.status-btn.active-O {
   @apply bg-orange-500 text-white border-orange-600;
 }
-.status-btn.active-O {
+/* L = red */
+.status-btn.active-L {
   @apply bg-red-500 text-white border-red-600;
 }
-.status-btn.active-L {
-  @apply bg-blue-500 text-white border-blue-600;
-}
+/* V = blue */
 .status-btn.active-V {
-  @apply bg-purple-500 text-white border-purple-600;
+  @apply bg-blue-500 text-white border-blue-600;
 }
