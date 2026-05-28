@@ -285,19 +285,20 @@ export default function DailyAttendance() {
 
           for (const emp of sectionEmps) {
             const status = attendance[emp.id] || "";
-            let statusColor: [number, number, number] = [0, 0, 0];
-            if (status === "P") statusColor = [0, 176, 80];
-            else if (status === "OT") statusColor = [255, 192, 0];
-            else if (status === "P,OT") statusColor = [0, 176, 80];
-            else if (status === "O") statusColor = [255, 0, 0];
-            else if (status === "L") statusColor = [0, 112, 192];
-            else if (status === "V") statusColor = [112, 48, 160];
+            let statusTextColor: [number, number, number] = [0, 0, 0];
+            let statusBgColor: [number, number, number] | undefined = undefined;
+            if (status === "P") { statusTextColor = [255, 255, 255]; statusBgColor = [0, 176, 80]; }
+            else if (status === "OT") { statusTextColor = [0, 0, 0]; statusBgColor = [255, 192, 0]; }
+            else if (status === "P,OT") { statusTextColor = [255, 255, 255]; statusBgColor = [0, 176, 80]; }
+            else if (status === "O") { statusTextColor = [255, 255, 255]; statusBgColor = [255, 165, 0]; }
+            else if (status === "L") { statusTextColor = [255, 255, 255]; statusBgColor = [220, 38, 38]; }
+            else if (status === "V") { statusTextColor = [255, 255, 255]; statusBgColor = [37, 99, 235]; }
 
             body.push([
               { content: sl.toString(), styles: { halign: "center", fontSize: 4 } },
               { content: emp.name, styles: { fontSize: 4 } },
               { content: emp.location || "", styles: { fontSize: 4 } },
-              { content: status, styles: { halign: "center", textColor: statusColor, fontStyle: "bold", fontSize: 4.5 } },
+              { content: status, styles: { halign: "center", textColor: statusTextColor, fillColor: statusBgColor, fontStyle: "bold", fontSize: 4.5 } },
             ]);
 
             if (status.includes("P")) totalP++;

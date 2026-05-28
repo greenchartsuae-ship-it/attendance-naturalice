@@ -262,32 +262,33 @@ export default function MonthlySummary() {
           for (let d = 1; d <= daysInMonth; d++) {
             const status = getEmpStatus(emp.id, d);
             const friday = isFriday(year, month, d);
-            let color: [number, number, number] = [0, 0, 0];
-            if (status === "P") color = [0, 176, 80];
-            else if (status === "OT") color = [255, 192, 0];
-            else if (status === "P,OT") color = [0, 176, 80];
-            else if (status === "O") color = [255, 0, 0];
-            else if (status === "L") color = [0, 112, 192];
-            else if (status === "V") color = [112, 48, 160];
+            let textColor: [number, number, number] = [0, 0, 0];
+            let bgColor: [number, number, number] | undefined = friday ? [255, 248, 225] : undefined;
+            if (status === "P") { textColor = [255, 255, 255]; bgColor = [0, 176, 80]; }
+            else if (status === "OT") { textColor = [0, 0, 0]; bgColor = [255, 192, 0]; }
+            else if (status === "P,OT") { textColor = [255, 255, 255]; bgColor = [0, 176, 80]; }
+            else if (status === "O") { textColor = [255, 255, 255]; bgColor = [255, 165, 0]; }
+            else if (status === "L") { textColor = [255, 255, 255]; bgColor = [220, 38, 38]; }
+            else if (status === "V") { textColor = [255, 255, 255]; bgColor = [37, 99, 235]; }
 
             row.push({
               content: status || "",
               styles: {
                 fontSize: 3.5,
                 halign: "center",
-                textColor: color,
+                textColor: textColor,
                 fontStyle: status ? "bold" : "normal",
-                fillColor: friday ? [255, 248, 225] : undefined,
+                fillColor: bgColor,
               } as Record<string, unknown>,
             });
           }
 
           const summary = getEmpSummary(emp.id);
-          row.push({ content: summary.p ? summary.p.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [0, 176, 80] } });
-          row.push({ content: summary.ot ? summary.ot.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 192, 0] } });
-          row.push({ content: summary.o ? summary.o.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 0, 0] } });
-          row.push({ content: summary.l ? summary.l.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [0, 112, 192] } });
-          row.push({ content: summary.v ? summary.v.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [112, 48, 160] } });
+          row.push({ content: summary.p ? summary.p.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 255, 255], fillColor: summary.p ? [0, 176, 80] : undefined } });
+          row.push({ content: summary.ot ? summary.ot.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [0, 0, 0], fillColor: summary.ot ? [255, 192, 0] : undefined } });
+          row.push({ content: summary.o ? summary.o.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 255, 255], fillColor: summary.o ? [255, 165, 0] : undefined } });
+          row.push({ content: summary.l ? summary.l.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 255, 255], fillColor: summary.l ? [220, 38, 38] : undefined } });
+          row.push({ content: summary.v ? summary.v.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold", textColor: [255, 255, 255], fillColor: summary.v ? [37, 99, 235] : undefined } });
           row.push({ content: summary.total ? summary.total.toString() : "", styles: { fontSize: 4, halign: "center", fontStyle: "bold" } });
           body.push(row);
         }
