@@ -215,6 +215,15 @@ export default function DailyAttendance() {
 
     const dateDisplay = formatDateForDisplay(date);
 
+    // Column header colors
+    const COLUMN_HEADER_COLORS: Record<string, string> = {
+      "ADMIN": "#2E5090",
+      "DRIVERS": "#4472C4",
+      "SALESMAN": "#548235",
+      "UMQ FACTORY": "#7030A0",
+      "DUBAI FACTORY": "#C55A11",
+    };
+
     // Dynamically build PDF columns from employee data
     const columnEmployees: Record<string, Employee[]> = {};
     for (const colTitle of PDF_COLUMN_ORDER) {
@@ -227,13 +236,15 @@ export default function DailyAttendance() {
       columnEmployees[colTitle].push(emp);
     }
 
+    // Track global totals
+    let totalPresent = 0, totalOff = 0, totalOT = 0, totalLeave = 0, totalVacation = 0;
+
     // Group employees by section within each column
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const columnTables: any[] = [];
 
     for (const colTitle of PDF_COLUMN_ORDER) {
       const colEmps = columnEmployees[colTitle] || [];
-      if (colEmps.length === 0) continue;
 
       // Group by section
       const sectionMap: Record<string, Employee[]> = {};
@@ -245,9 +256,11 @@ export default function DailyAttendance() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tableBody: any[] = [];
 
-      // Group header
+      const colColor = COLUMN_HEADER_COLORS[colTitle] || "#2E5090";
+
+      // Group header with column-specific color
       tableBody.push([
-        { text: colTitle, colSpan: 4, alignment: "center", bold: true, fillColor: "#2E5090", color: "white", fontSize: 7, margin: [0, 1, 0, 1] },
+        { text: colTitle, colSpan: 4, alignment: "center", bold: true, fillColor: colColor, color: "white", fontSize: 7, margin: [0, 1, 0, 1] },
         {}, {}, {}
       ]);
 
@@ -260,7 +273,13 @@ export default function DailyAttendance() {
       ]);
 
       let sl = 1;
-      let sectionPresent = 0, sectionOff = 0, sectionOT = 0, sectionLeave = 0, sectionVacation = 0;
+
+      if (colEmps.length === 0) {
+        tableBody.push([
+          { text: "No employees", colSpan: 4, fontSize: 6, italics: true, color: "#999999", alignment: "center" },
+          {}, {}, {}
+        ]);
+      }
 
       for (const section of Object.keys(sectionMap)) {
         const sectionEmps = sectionMap[section];
@@ -296,46 +315,15 @@ export default function DailyAttendance() {
             stCell,
           ]);
 
-          if (status.includes("P")) sectionPresent++;
-          if (status.includes("OT")) sectionOT++;
-          if (status === "O") sectionOff++;
-          if (status === "L") sectionLeave++;
-          if (status === "V") sectionVacation++;
+          if (status.includes("P")) totalPresent++;
+          if (status.includes("OT")) totalOT++;
+          if (status === "O") totalOff++;
+          if (status === "L") totalLeave++;
+          if (status === "V") totalVacation++;
 
           sl++;
         }
       }
-
-      // Totals for this column
-      const grandTotal = sectionPresent + sectionOff + sectionLeave + sectionVacation;
-      tableBody.push([
-        { text: "TOTAL", colSpan: 4, bold: true, fontSize: 6, fillColor: "#D9E2F3", alignment: "center", margin: [0, 1, 0, 1] },
-        {}, {}, {}
-      ]);
-      tableBody.push([
-        { text: "PRESENT:", colSpan: 3, fontSize: 6, bold: true }, {}, {},
-        { text: sectionPresent.toString(), fontSize: 6, bold: true, alignment: "center", color: "#00B050" }
-      ]);
-      tableBody.push([
-        { text: "OFF:", colSpan: 3, fontSize: 6, bold: true }, {}, {},
-        { text: sectionOff.toString(), fontSize: 6, bold: true, alignment: "center", color: "#FF0000" }
-      ]);
-      tableBody.push([
-        { text: "OVERTIME:", colSpan: 3, fontSize: 6, bold: true }, {}, {},
-        { text: sectionOT.toString(), fontSize: 6, bold: true, alignment: "center", color: "#FFC000" }
-      ]);
-      tableBody.push([
-        { text: "LEAVE:", colSpan: 3, fontSize: 6, bold: true }, {}, {},
-        { text: sectionLeave.toString(), fontSize: 6, bold: true, alignment: "center", color: "#0070C0" }
-      ]);
-      tableBody.push([
-        { text: "VACATION:", colSpan: 3, fontSize: 6, bold: true }, {}, {},
-        { text: sectionVacation.toString(), fontSize: 6, bold: true, alignment: "center", color: "#7030A0" }
-      ]);
-      tableBody.push([
-        { text: "GRAND TOTAL:", colSpan: 3, fontSize: 6, bold: true, fillColor: "#D9E2F3" }, {}, {},
-        { text: grandTotal.toString(), fontSize: 6, bold: true, alignment: "center", fillColor: "#D9E2F3" }
-      ]);
 
       columnTables.push({
         table: {
@@ -356,6 +344,40 @@ export default function DailyAttendance() {
       });
     }
 
+    // Single combined total table at the bottom
+    const grandTotal = totalPresent + totalOff + totalLeave + totalVacation;
+    const totalTable = {
+      table: {
+        widths: ["*", 40, "*", 40, "*", 40, "*"],
+        body: [
+          [
+            { text: "PRESENT:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
+            { text: totalPresent.toString(), fontSize: 8, bold: true, alignment: "center", color: "#00B050", fillColor: "#E2EFDA", margin: [0, 2, 0, 2] },
+            { text: "OFF:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
+            { text: totalOff.toString(), fontSize: 8, bold: true, alignment: "center", color: "#C55A11", fillColor: "#FCE4CC", margin: [0, 2, 0, 2] },
+            { text: "OVERTIME:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
+            { text: totalOT.toString(), fontSize: 8, bold: true, alignment: "center", color: "#BF8F00", fillColor: "#FFF2CC", margin: [0, 2, 0, 2] },
+            { text: "", border: [false, false, false, false] },
+          ],
+          [
+            { text: "LEAVE:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
+            { text: totalLeave.toString(), fontSize: 8, bold: true, alignment: "center", color: "#FF0000", fillColor: "#FFD9D9", margin: [0, 2, 0, 2] },
+            { text: "VACATION:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
+            { text: totalVacation.toString(), fontSize: 8, bold: true, alignment: "center", color: "#0070C0", fillColor: "#D6E4F0", margin: [0, 2, 0, 2] },
+            { text: "GRAND TOTAL:", fontSize: 8, bold: true, alignment: "right", border: [false, false, false, false] },
+            { text: grandTotal.toString(), fontSize: 8, bold: true, alignment: "center", color: "#2E5090", fillColor: "#D9E2F3", margin: [0, 2, 0, 2] },
+            { text: "", border: [false, false, false, false] },
+          ],
+        ],
+      },
+      layout: {
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => "#CCCCCC",
+        vLineColor: () => "#CCCCCC",
+      },
+    };
+
     const docDefinition = {
       pageSize: "A4" as const,
       pageOrientation: "landscape" as const,
@@ -373,6 +395,17 @@ export default function DailyAttendance() {
           columns: columnTables.map((t) => ({ width: "*", ...t })),
           columnGap: 5,
         },
+        { text: "", margin: [0, 6, 0, 0] as [number, number, number, number] },
+        {
+          text: "TOTAL",
+          fontSize: 9,
+          bold: true,
+          alignment: "center" as const,
+          fillColor: "#2E5090",
+          color: "#2E5090",
+          margin: [0, 0, 0, 4] as [number, number, number, number],
+        },
+        totalTable,
       ],
     };
 
