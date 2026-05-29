@@ -35,7 +35,7 @@ export default function EmployeeManagement() {
   const [newEmployee, setNewEmployee] = useState({ name: "", section: SECTIONS[0], grp: ALL_GROUPS[0], location: "" });
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editData, setEditData] = useState({ section: "", grp: "", location: "" });
+  const [editData, setEditData] = useState({ name: "", section: "", grp: "", location: "" });
 
   useEffect(() => {
     fetchEmployees();
@@ -90,12 +90,12 @@ export default function EmployeeManagement() {
 
   const startEdit = (emp: Employee) => {
     setEditingId(emp.id);
-    setEditData({ section: emp.section, grp: emp.grp, location: emp.location || "" });
+    setEditData({ name: emp.name, section: emp.section, grp: emp.grp, location: emp.location || "" });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditData({ section: "", grp: "", location: "" });
+    setEditData({ name: "", section: "", grp: "", location: "" });
   };
 
   const saveEdit = async (id: number) => {
@@ -213,7 +213,18 @@ export default function EmployeeManagement() {
             {filtered.map((emp, idx) => (
               <tr key={emp.id} className="border-b hover:bg-gray-50">
                 <td className="px-4 py-2 text-gray-500">{idx + 1}</td>
-                <td className="px-4 py-2 font-medium">{emp.name}</td>
+                {editingId === emp.id ? (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={editData.name}
+                      onChange={(e) => setEditData({ ...editData, name: e.target.value.toUpperCase() })}
+                      className="border rounded px-2 py-1 text-xs w-full font-medium"
+                    />
+                  </td>
+                ) : (
+                  <td className="px-4 py-2 font-medium">{emp.name}</td>
+                )}
                 {editingId === emp.id ? (
                   <>
                     <td className="px-4 py-2">
