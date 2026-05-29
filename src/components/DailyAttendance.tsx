@@ -49,9 +49,10 @@ const PDF_COLUMN_MAP: Record<string, string> = {
   "MECHANIC": "UMQ FACTORY",
   "DUBAI FACTORY": "DUBAI FACTORY",
   "DUBAI FACTORY NIGHT": "DUBAI FACTORY",
+  "FUJAIRAH FACTORY": "FUJAIRAH FACTORY",
 };
 
-const PDF_COLUMN_ORDER = ["ADMIN", "DRIVERS", "SALESMAN", "UMQ FACTORY", "DUBAI FACTORY"];
+const PDF_COLUMN_ORDER = ["ADMIN", "DRIVERS", "SALESMAN", "UMQ FACTORY", "DUBAI FACTORY", "FUJAIRAH FACTORY"];
 
 const COLUMN_HEADER_COLORS: Record<string, string> = {
   "ADMIN": "#2E5090",
@@ -59,6 +60,7 @@ const COLUMN_HEADER_COLORS: Record<string, string> = {
   "SALESMAN": "#548235",
   "UMQ FACTORY": "#7030A0",
   "DUBAI FACTORY": "#C55A11",
+  "FUJAIRAH FACTORY": "#C55A11",
 };
 
 function toggleStatus(current: string, clicked: string): string {
