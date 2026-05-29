@@ -71,13 +71,20 @@ export default function EmployeeManagement() {
     }
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
   const deleteEmployee = async (id: number) => {
-    if (!confirm("Are you sure you want to remove this employee?")) return;
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      return;
+    }
     try {
       await fetch(`/api/employees?id=${id}`, { method: "DELETE" });
       setEmployees(employees.filter((e) => e.id !== id));
+      setConfirmDeleteId(null);
     } catch (error) {
       console.error("Failed to delete employee:", error);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -273,10 +280,19 @@ export default function EmployeeManagement() {
                         </button>
                         <button
                           onClick={() => deleteEmployee(emp.id)}
-                          className="text-red-500 hover:text-red-700 text-xs font-medium"
+                          onBlur={() => setTimeout(() => setConfirmDeleteId(null), 200)}
+                          className={`text-xs font-medium ${confirmDeleteId === emp.id ? "bg-red-600 text-white px-2 py-0.5 rounded animate-pulse" : "text-red-500 hover:text-red-700"}`}
                         >
-                          Remove
+                          {confirmDeleteId === emp.id ? "⚠️ Confirm?" : "Remove"}
                         </button>
+                        {confirmDeleteId === emp.id && (
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-gray-400 hover:text-gray-600 text-xs"
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </div>
                     </td>
                   </>
