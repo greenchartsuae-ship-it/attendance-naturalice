@@ -206,12 +206,12 @@ export default function MonthlySummary() {
 
       // Calculate page dimensions to fit ALL content on ONE page
       const totalRows = sortedEmployees.length + sections.length + 2; // employees + section headers + header + totals
-      const rowHeight = 6.5; // generous: minCellHeight(4) + cellPadding(0.8*2) + borders + buffer
-      const headerHeight = 16;
-      const marginTop = 20;
-      const marginBottom = 10;
-      const neededHeight = marginTop + headerHeight + (totalRows * rowHeight) + marginBottom + 30;
-      const pageHeight = Math.max(300, neededHeight); // generous minimum
+      const rowHeight = 6; // minCellHeight(4) + cellPadding(0.8*2) + borders
+      const headerHeight = 10; // header row height
+      const titleHeight = 14; // title at Y=10, table starts at Y=14
+      const bottomMargin = 5;
+      const neededHeight = titleHeight + headerHeight + (totalRows * rowHeight) + bottomMargin + 20; // +20 buffer
+      const pageHeight = Math.max(300, neededHeight);
 
       const pageWidth = 420; // A3-ish landscape width to fit 31 day columns
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [pageWidth, pageHeight] });
@@ -358,8 +358,6 @@ export default function MonthlySummary() {
           return acc;
         }, {}),
         tableWidth: "auto",
-        pageBreak: "avoid" as const,
-        rowPageBreak: "avoid" as const,
         didParseCell: function(data: { section: string; row: { index: number }; cell: { styles: Record<string, unknown> } }) {
           if (data.section === "body") {
             data.cell.styles.minCellHeight = 4;
