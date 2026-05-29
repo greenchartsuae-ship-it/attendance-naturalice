@@ -175,12 +175,12 @@ export async function POST() {
 
     // DUBAI FACTORY group
     // NIGHT SHIFT - AL QUOZ
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (223, 'ALAMIN', 'NIGHT SHIFT - AL QUOZ', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (224, 'ARUN SURESH', 'NIGHT SHIFT - AL QUOZ', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (225, 'BIRUK', 'NIGHT SHIFT - AL QUOZ', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (226, 'HARI', 'NIGHT SHIFT - AL QUOZ', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (227, 'IMRAN', 'NIGHT SHIFT - AL QUOZ', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (228, 'WASSEM', 'NIGHT SHIFT - AL QUOZ', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (223, 'ALAMIN', 'PROD NIGHT SHIFT', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (224, 'ARUN SURESH', 'PROD NIGHT SHIFT', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (225, 'BIRUK', 'PROD NIGHT SHIFT', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (226, 'HARI', 'PROD NIGHT SHIFT', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (227, 'IMRAN', 'PROD NIGHT SHIFT', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (228, 'WASSEM', 'PROD NIGHT SHIFT', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
     // PROD - LUXURY ICE (night)
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (229, 'AHMED', 'PROD NIGHT - LUXURY ICE', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (230, 'BIPLOP', 'PROD NIGHT - LUXURY ICE', 'DUBAI FACTORY NIGHT', '') ON CONFLICT (id) DO NOTHING`;
