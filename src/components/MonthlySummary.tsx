@@ -98,6 +98,7 @@ export default function MonthlySummary() {
   const [attendance, setAttendance] = useState<Record<number, Record<string, string>>>({});
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
+  const [clearStep, setClearStep] = useState(0); // 0=idle, 1=confirm
 
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
   const daysInMonth = getDaysInMonth(year, month);
@@ -182,6 +183,26 @@ export default function MonthlySummary() {
     monthlyTotals.l += s.l;
     monthlyTotals.v += s.v;
   });
+
+  const clearAllMonthly = async () => {
+    if (clearStep === 0) {
+      setClearStep(1);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/attendance?month=${monthStr}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchData();
+        setClearStep(0);
+      } else {
+        alert("Failed to clear monthly data");
+        setClearStep(0);
+      }
+    } catch (error) {
+      console.error("Failed to clear:", error);
+      setClearStep(0);
+    }
+  };
 
   const exportPDF = async () => {
     try {
@@ -398,12 +419,25 @@ export default function MonthlySummary() {
             </button>
           ))}
         </div>
-        <button
-          onClick={exportPDF}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition ml-auto"
-        >
-          📄 Export PDF
-        </button>
+        <div className="flex gap-2 ml-auto">
+          <button
+            onClick={clearAllMonthly}
+            onBlur={() => setTimeout(() => setClearStep(0), 200)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+              clearStep === 0
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : "bg-red-700 text-white animate-pulse"
+            }`}
+          >
+            {clearStep === 0 ? "🗑️ Clear All Monthly" : "⚠️ Click to Confirm"}
+          </button>
+          <button
+            onClick={exportPDF}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition"
+          >
+            📄 Export PDF
+          </button>
+        </div>
       </div>
 
       {loading ? (

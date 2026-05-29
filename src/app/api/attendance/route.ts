@@ -93,11 +93,21 @@ export async function DELETE(request: Request) {
     const sql = getSQL();
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
-    if (!date) {
-      return NextResponse.json({ error: 'Missing date parameter' }, { status: 400 });
+    const month = searchParams.get('month');
+
+    if (month) {
+      const startDate = `${month}-01`;
+      const endDate = `${month}-31`;
+      await sql`DELETE FROM attendance WHERE date >= ${startDate}::date AND date <= ${endDate}::date`;
+      return NextResponse.json({ success: true });
     }
-    await sql`DELETE FROM attendance WHERE date = ${date}::date`;
-    return NextResponse.json({ success: true });
+
+    if (date) {
+      await sql`DELETE FROM attendance WHERE date = ${date}::date`;
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Missing date or month parameter' }, { status: 400 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
