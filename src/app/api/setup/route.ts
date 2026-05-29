@@ -160,15 +160,15 @@ export async function POST() {
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (210, 'SAIFUL', 'UMQ TECHNICIAN', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (211, 'SANJOY', 'UMQ TECHNICIAN', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (212, 'SOROREAR', 'UMQ TECHNICIAN', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    // UMQ PRODUCTION
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (201, 'ADNAN', 'UMQ PRODUCTION', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (202, 'JAMES', 'UMQ PRODUCTION', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (203, 'RAKIB', 'UMQ PRODUCTION', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (204, 'SIRAZ', 'UMQ PRODUCTION', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    // UMQ PRODUCTION NIGHT SHIFT
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (232, 'ARIF PROD', 'UMQ PRODUCTION NIGHT SHIFT', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (234, 'IMRAN KHAN', 'UMQ PRODUCTION NIGHT SHIFT', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (235, 'YOUSAF-EGY', 'UMQ PRODUCTION NIGHT SHIFT', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    // PRODUCTION UMQ
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (201, 'ADNAN', 'PRODUCTION UMQ', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (202, 'JAMES', 'PRODUCTION UMQ', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (203, 'RAKIB', 'PRODUCTION UMQ', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (204, 'SIRAZ', 'PRODUCTION UMQ', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    // PRODUCTION UMQ NIGHT SHIFT
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (232, 'ARIF PROD', 'PRODUCTION UMQ NIGHT SHIFT', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (234, 'IMRAN KHAN', 'PRODUCTION UMQ NIGHT SHIFT', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (235, 'YOUSAF-EGY', 'PRODUCTION UMQ NIGHT SHIFT', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
     // FUJAIRAH FACTORY
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (245, 'AJITH', 'FUJAIRAH FACTORY', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
     await sql`INSERT INTO employees (id, name, section, grp, location) VALUES (217, 'AL AMEEN', 'FUJAIRAH FACTORY', 'UMQ FACTORY', '') ON CONFLICT (id) DO NOTHING`;
