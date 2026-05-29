@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Employee } from "@/lib/types";
 
-const GROUP_FILTERS = ["ALL", "OFFICE/ADMIN", "ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FUJAIRAH FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT"];
-
 const SECTION_COLORS: Record<string, string> = {
   "ADMIN": "#4472C4",
   "SALES SUPERVISOR": "#4472C4",
@@ -37,20 +35,21 @@ const SECTION_COLORS: Record<string, string> = {
   "PROD NIGHT - LUXURY ICE": "#BF8F00",
 };
 
-const SECTION_ORDER: Record<string, string[]> = {
-  "ADMIN": ["ADMIN", "SALES SUPERVISOR", "JELAT"],
-  "OFFICE/ADMIN": ["PRODUCTION HEAD", "HYGIENE DEPT"],
-  "CLEANER": ["CLEANER", "ACCOMMODATION"],
-  "DRIVERS": ["DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH", "DRIVERS", "HOUSE DRIVER"],
-  "MECHANIC": ["VEHICLE MAINTENANCE"],
-  "SALESMAN": ["SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH", "SALESMAN"],
-  "UMQ FACTORY": ["UMQ PRODUCTION", "UMQ - TECHNICIAN", "UMQ TECHNICIAN"],
-  "FACTORY/PRODUCTION": ["NIGHT SHIFT - UMQ", "FUJAIRAH FACTORY"],
-  "DUBAI FACTORY": ["PRODUCTION", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN"],
-  "DUBAI FACTORY NIGHT": ["PROD NIGHT SHIFT", "PROD NIGHT - LUXURY ICE"],
-};
+// Flat section order — all employees in same section stay together
+const FLAT_SECTION_ORDER = [
+  "ADMIN", "SALES SUPERVISOR", "JELAT",
+  "PRODUCTION HEAD", "HYGIENE DEPT",
+  "CLEANER", "ACCOMMODATION",
+  "DRIVER - DUBAI", "DRIVER - ABU DHABI", "DRIVER - OTHER EMIRATES", "DRIVER - FUJAIRAH", "DRIVERS", "HOUSE DRIVER",
+  "VEHICLE MAINTENANCE",
+  "SALESMAN - DUBAI", "SALESMAN - ABU DHABI", "SALESMAN - OTHER EMIRATES", "SALESMAN - FUJAIRAH", "SALESMAN",
+  "UMQ PRODUCTION", "UMQ - TECHNICIAN", "UMQ TECHNICIAN",
+  "NIGHT SHIFT - UMQ", "FUJAIRAH FACTORY",
+  "PRODUCTION", "PROD - LUXURY ICE", "AL QUOZ TECHNICIAN",
+  "PROD NIGHT SHIFT", "PROD NIGHT - LUXURY ICE",
+];
 
-const GRP_ORDER = ["ADMIN", "OFFICE/ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT"];
+const GROUP_FILTERS = ["ALL", "OFFICE/ADMIN", "ADMIN", "CLEANER", "DRIVERS", "MECHANIC", "SALESMAN", "UMQ FACTORY", "FACTORY/PRODUCTION", "DUBAI FACTORY", "DUBAI FACTORY NIGHT", "FUJAIRAH FACTORY"];
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
@@ -127,16 +126,11 @@ export default function MonthlySummary() {
       filtered = filtered.filter((e) => e.grp === groupFilter);
     }
     return [...filtered].sort((a, b) => {
-      const grpA = GRP_ORDER.indexOf(a.grp);
-      const grpB = GRP_ORDER.indexOf(b.grp);
-      const grpAIdx = grpA === -1 ? GRP_ORDER.length : grpA;
-      const grpBIdx = grpB === -1 ? GRP_ORDER.length : grpB;
-      if (grpAIdx !== grpBIdx) return grpAIdx - grpBIdx;
-      const secOrder = SECTION_ORDER[a.grp] || [];
-      const secA = secOrder.indexOf(a.section);
-      const secB = secOrder.indexOf(b.section);
-      const secAIdx = secA === -1 ? secOrder.length : secA;
-      const secBIdx = secB === -1 ? secOrder.length : secB;
+      // Sort by flat section order — all same-section employees stay together
+      const secA = FLAT_SECTION_ORDER.indexOf(a.section);
+      const secB = FLAT_SECTION_ORDER.indexOf(b.section);
+      const secAIdx = secA === -1 ? FLAT_SECTION_ORDER.length : secA;
+      const secBIdx = secB === -1 ? FLAT_SECTION_ORDER.length : secB;
       if (secAIdx !== secBIdx) return secAIdx - secBIdx;
       return a.name.localeCompare(b.name);
     });
