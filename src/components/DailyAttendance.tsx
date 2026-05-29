@@ -243,7 +243,8 @@ export default function DailyAttendance() {
       const rowH = 4.2;
       const neededHeight = 25 + (maxRows * rowH) + 30; // title + rows + totals
       const pageHeight = Math.max(210, neededHeight);
-      const pageWidth = 297; // A4 landscape width
+      const numCols = PDF_COLUMN_ORDER.length;
+      const pageWidth = numCols <= 5 ? 297 : 350; // wider for 6+ columns
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [pageWidth, pageHeight] });
 
       // Title
@@ -256,7 +257,7 @@ export default function DailyAttendance() {
       let totalP = 0, totalOT = 0, totalO = 0, totalL = 0, totalV = 0;
       let maxFinalY = 0;
 
-      const colWidth = (pageWidth - 20) / 5; // 5 columns with margins
+      const colWidth = (pageWidth - 20) / numCols; // dynamic columns with margins
       const startY = 15;
 
       for (let colIdx = 0; colIdx < PDF_COLUMN_ORDER.length; colIdx++) {
