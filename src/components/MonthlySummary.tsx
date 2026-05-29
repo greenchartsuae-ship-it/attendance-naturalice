@@ -212,12 +212,12 @@ export default function MonthlySummary() {
 
       // Calculate page dimensions to fit ALL content on ONE page
       const totalRows = sortedEmployees.length + sections.length + 2; // employees + section headers + header + totals
-      const rowHeight = 5.5; // minCellHeight(4) + cellPadding(0.8*2) + line border buffer
-      const headerHeight = 14;
-      const marginTop = 18;
-      const marginBottom = 8;
-      const neededHeight = marginTop + headerHeight + (totalRows * rowHeight) + marginBottom + 15;
-      const pageHeight = Math.max(250, neededHeight); // generous minimum
+      const rowHeight = 6.5; // generous: minCellHeight(4) + cellPadding(0.8*2) + borders + buffer
+      const headerHeight = 16;
+      const marginTop = 20;
+      const marginBottom = 10;
+      const neededHeight = marginTop + headerHeight + (totalRows * rowHeight) + marginBottom + 30;
+      const pageHeight = Math.max(300, neededHeight); // generous minimum
 
       const pageWidth = 420; // A3-ish landscape width to fit 31 day columns
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [pageWidth, pageHeight] });
