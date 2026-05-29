@@ -210,16 +210,15 @@ export default function MonthlySummary() {
       const jsPDF = jsPDFModule.default;
       await import("jspdf-autotable");
 
-      // Calculate page dimensions to fit all content
+      // Calculate page dimensions to fit ALL content on ONE page
       const totalRows = sortedEmployees.length + sections.length + 2; // employees + section headers + header + totals
-      const rowHeight = 4.5;
-      const headerHeight = 12;
-      const marginTop = 15;
-      const marginBottom = 10;
-      const neededHeight = marginTop + headerHeight + (totalRows * rowHeight) + marginBottom + 10;
-      const pageHeight = Math.max(210, neededHeight); // at least A4 portrait width
+      const rowHeight = 5.5; // minCellHeight(4) + cellPadding(0.8*2) + line border buffer
+      const headerHeight = 14;
+      const marginTop = 18;
+      const marginBottom = 8;
+      const neededHeight = marginTop + headerHeight + (totalRows * rowHeight) + marginBottom + 15;
+      const pageHeight = Math.max(250, neededHeight); // generous minimum
 
-      // Landscape: width=long side, height=short side but we use custom
       const pageWidth = 420; // A3-ish landscape width to fit 31 day columns
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [pageWidth, pageHeight] });
 
@@ -365,8 +364,9 @@ export default function MonthlySummary() {
           return acc;
         }, {}),
         tableWidth: "auto",
+        pageBreak: "avoid" as const,
+        rowPageBreak: "avoid" as const,
         didParseCell: function(data: { section: string; row: { index: number }; cell: { styles: Record<string, unknown> } }) {
-          // Ensure consistent row height
           if (data.section === "body") {
             data.cell.styles.minCellHeight = 4;
           }
