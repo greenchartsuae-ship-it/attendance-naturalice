@@ -309,8 +309,9 @@ export default function MonthlySummary() {
       }
 
       // Monthly totals row
+      const totalEmployees = sortedEmployees.length;
       const totalsRow: (string | { content: string; styles: Record<string, unknown> })[] = [
-        { content: "MONTHLY TOTALS", colSpan: 3, styles: { fontStyle: "bold", fontSize: 4.5, fillColor: [217, 226, 243] } },
+        { content: `MONTHLY TOTALS — Total: ${totalEmployees}`, colSpan: 3, styles: { fontStyle: "bold", fontSize: 4.5, fillColor: [217, 226, 243] } },
         "", "",
       ];
       for (let d = 1; d <= daysInMonth; d++) {
