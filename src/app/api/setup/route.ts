@@ -12,9 +12,13 @@ export async function POST() {
         section VARCHAR(100) NOT NULL,
         grp VARCHAR(50) NOT NULL,
         location VARCHAR(100) DEFAULT '',
+        off_day VARCHAR(20) DEFAULT '',
         active BOOLEAN DEFAULT TRUE
       )
     `;
+
+    // Add off_day column if table already exists
+    await sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS off_day VARCHAR(20) DEFAULT ''`;
 
     await sql`
       CREATE TABLE IF NOT EXISTS attendance (
